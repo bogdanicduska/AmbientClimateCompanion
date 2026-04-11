@@ -40,7 +40,8 @@ def insert_record(data: dict) -> bool:
       {sql_val(data.get("outdoor_temp"))},
       {sql_val(data.get("outdoor_humidity"))},
       {sql_val(data.get("outdoor_weather"))},
-      {sql_val(data.get("outdoor_icon"))}
+      {sql_val(data.get("outdoor_icon"))},
+      {sql_val(data.get("indoor_eco2"))}
     )
     """
     try:
