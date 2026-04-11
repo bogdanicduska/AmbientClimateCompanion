@@ -36,6 +36,7 @@ def ingest(payload: TelemetryPayload):
         "indoor_pressure":  payload.indoor_pressure,
         "air_quality":      payload.air_quality,
         "motion":           payload.motion,
+        "indoor_eco2":      payload.indoor_eco2,
         **outdoor,
     }
 
