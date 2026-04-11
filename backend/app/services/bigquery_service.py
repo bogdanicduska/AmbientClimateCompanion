@@ -29,7 +29,7 @@ def insert_record(data: dict) -> bool:
     INSERT INTO `{BQ_TABLE_REF}`
       (timestamp, indoor_temp, indoor_humidity, indoor_pressure,
        air_quality, motion, outdoor_temp, outdoor_humidity,
-       outdoor_weather, outdoor_icon)
+       outdoor_weather, outdoor_icon, indoor_eco2)
     VALUES (
       '{data["timestamp"]}',
       {sql_val(data.get("indoor_temp"))},
