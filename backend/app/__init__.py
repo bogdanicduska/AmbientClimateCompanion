@@ -4,6 +4,8 @@ from app.config import Config
 from app.routes.health import health_bp
 from app.routes.telemetry import telemetry_bp
 from app.routes.latest import latest_bp
+from app.routes.history import history_bp
+from app.routes.weather import weather_bp
 from app.utils.logger import configure_logging
 
 
@@ -16,6 +18,8 @@ def create_app() -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(telemetry_bp, url_prefix="/api/v1")
     app.register_blueprint(latest_bp, url_prefix="/api/v1")
+    app.register_blueprint(history_bp, url_prefix="/api/v1")
+    app.register_blueprint(weather_bp, url_prefix="/api/v1")
 
     @app.route("/")
     def index():

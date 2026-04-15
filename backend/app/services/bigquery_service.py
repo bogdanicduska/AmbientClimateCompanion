@@ -7,6 +7,14 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+_COLUMNS = """
+    device_id, timestamp, indoor_temp, indoor_humidity,
+    air_quality, air_quality_label, motion, wifi_rssi,
+    indoor_pressure, indoor_eco2,
+    outdoor_temp, outdoor_humidity, outdoor_weather, outdoor_icon,
+    weather_status, ingested_at, sync_status
+"""
+
 
 def get_bigquery_client() -> bigquery.Client:
     """Create and return a BigQuery client."""
@@ -17,32 +25,50 @@ def _table_ref(config) -> str:
     return f"{config['GCP_PROJECT_ID']}.{config['BIGQUERY_DATASET']}.{config['BIGQUERY_TABLE']}"
 
 
-def insert_indoor_reading(row: Dict[str, Any], config) -> None:
+def _row_to_dict(r) -> Dict[str, Any]:
+    return {
+        "device_id":         r.device_id,
+        "timestamp":         r.timestamp.isoformat() if r.timestamp else None,
+        "indoor_temp":       r.indoor_temp,
+        "indoor_humidity":   r.indoor_humidity,
+        "air_quality":       r.air_quality,
+        "air_quality_label": r.air_quality_label,
+        "motion":            r.motion,
+        "wifi_rssi":         r.wifi_rssi,
+        "indoor_pressure":   r.indoor_pressure,
+        "indoor_eco2":       r.indoor_eco2,
+        "outdoor_temp":      r.outdoor_temp,
+        "outdoor_humidity":  r.outdoor_humidity,
+        "outdoor_weather":   r.outdoor_weather,
+        "outdoor_icon":      r.outdoor_icon,
+        "weather_status":    r.weather_status,
+        "ingested_at":       r.ingested_at.isoformat() if r.ingested_at else None,
+        "sync_status":       r.sync_status,
+    }
+
+
+def insert_telemetry_row(row: Dict[str, Any], config) -> None:
     """
     Insert a single telemetry record into BigQuery using the streaming insert API.
-    Raises RuntimeError on failure so the route layer can return a 500.
+    Raises RuntimeError with a meaningful message on failure.
     """
     client = get_bigquery_client()
-    errors = client.insert_rows_json(_table_ref(config), [row])
+    table = _table_ref(config)
+    errors = client.insert_rows_json(table, [row])
 
     if errors:
-        raise RuntimeError(f"BigQuery insert failed: {errors}")
+        raise RuntimeError(f"BigQuery insert failed for table {table}: {errors}")
 
-    logger.info(f"Record inserted: {row.get('timestamp')}")
+    logger.info(f"Record inserted: {row.get('timestamp')} — device: {row.get('device_id')}")
 
 
 def get_latest_reading(device_id: str, config) -> Optional[Dict]:
-    """Return the most recent row for a given device."""
+    """Return the most recent row for a given device, ordered by measurement timestamp."""
     client = get_bigquery_client()
-    table = _table_ref(config)
 
     query = f"""
-    SELECT
-        device_id, timestamp, indoor_temp, indoor_humidity,
-        air_quality, motion, wifi_rssi, indoor_pressure, indoor_eco2,
-        outdoor_temp, outdoor_humidity, outdoor_weather, outdoor_icon,
-        ingested_at
-    FROM `{table}`
+    SELECT {_COLUMNS}
+    FROM `{_table_ref(config)}`
     WHERE device_id = @device_id
     ORDER BY timestamp DESC
     LIMIT 1
@@ -56,46 +82,26 @@ def get_latest_reading(device_id: str, config) -> Optional[Dict]:
 
     try:
         rows = list(client.query(query, job_config=job_config).result())
-        if not rows:
-            return None
-        row = rows[0]
-        return {
-            "device_id":       row.device_id,
-            "timestamp":       row.timestamp.isoformat() if row.timestamp else None,
-            "indoor_temp":     row.indoor_temp,
-            "indoor_humidity": row.indoor_humidity,
-            "air_quality":     row.air_quality,
-            "motion":          row.motion,
-            "wifi_rssi":       row.wifi_rssi,
-            "indoor_pressure": row.indoor_pressure,
-            "indoor_eco2":     row.indoor_eco2,
-            "outdoor_temp":    row.outdoor_temp,
-            "outdoor_humidity":row.outdoor_humidity,
-            "outdoor_weather": row.outdoor_weather,
-            "outdoor_icon":    row.outdoor_icon,
-            "ingested_at":     row.ingested_at.isoformat() if row.ingested_at else None,
-        }
+        return _row_to_dict(rows[0]) if rows else None
     except Exception as e:
         logger.error(f"BigQuery get_latest_reading failed: {e}")
         raise
 
 
-def get_history(device_id: str, config, days: int = 7) -> List[Dict]:
-    """Return all records for a device from the last N days."""
+def get_history(device_id: str, config, hours: int = 24) -> List[Dict]:
+    """
+    Return records for a device from the last N hours sorted ascending by timestamp.
+    Default window is 24 hours.
+    """
     client = get_bigquery_client()
-    table = _table_ref(config)
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
     query = f"""
-    SELECT
-        device_id, timestamp, indoor_temp, indoor_humidity,
-        air_quality, motion, wifi_rssi, indoor_pressure, indoor_eco2,
-        outdoor_temp, outdoor_humidity, outdoor_weather, outdoor_icon,
-        ingested_at
-    FROM `{table}`
+    SELECT {_COLUMNS}
+    FROM `{_table_ref(config)}`
     WHERE device_id = @device_id
       AND timestamp >= @since
-    ORDER BY timestamp DESC
+    ORDER BY timestamp ASC
     """
 
     job_config = bigquery.QueryJobConfig(
@@ -107,25 +113,7 @@ def get_history(device_id: str, config, days: int = 7) -> List[Dict]:
 
     try:
         rows = list(client.query(query, job_config=job_config).result())
-        return [
-            {
-                "device_id":       r.device_id,
-                "timestamp":       r.timestamp.isoformat() if r.timestamp else None,
-                "indoor_temp":     r.indoor_temp,
-                "indoor_humidity": r.indoor_humidity,
-                "air_quality":     r.air_quality,
-                "motion":          r.motion,
-                "wifi_rssi":       r.wifi_rssi,
-                "indoor_pressure": r.indoor_pressure,
-                "indoor_eco2":     r.indoor_eco2,
-                "outdoor_temp":    r.outdoor_temp,
-                "outdoor_humidity":r.outdoor_humidity,
-                "outdoor_weather": r.outdoor_weather,
-                "outdoor_icon":    r.outdoor_icon,
-                "ingested_at":     r.ingested_at.isoformat() if r.ingested_at else None,
-            }
-            for r in rows
-        ]
+        return [_row_to_dict(r) for r in rows]
     except Exception as e:
         logger.error(f"BigQuery get_history failed: {e}")
         raise

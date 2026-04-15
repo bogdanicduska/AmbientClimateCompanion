@@ -1,8 +1,13 @@
 import requests
 import random
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 BASE_URL = "http://127.0.0.1:8080"
+API_KEY = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 
 payload = {
     "device_id":       "core2-livingroom",
@@ -18,6 +23,10 @@ print("Sending payload:")
 for k, v in payload.items():
     print(f"  {k}: {v}")
 
-response = requests.post(f"{BASE_URL}/api/v1/telemetry", json=payload)
+response = requests.post(
+    f"{BASE_URL}/api/v1/telemetry",
+    json=payload,
+    headers={"Authorization": f"Bearer {API_KEY}"},
+)
 print(f"\nStatus: {response.status_code}")
 print(f"Response: {response.json()}")

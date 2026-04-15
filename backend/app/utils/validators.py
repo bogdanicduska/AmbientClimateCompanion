@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Tuple, Optional
 
 REQUIRED_FIELDS = ("device_id", "indoor_temp", "indoor_humidity")
@@ -31,5 +32,21 @@ def validate_telemetry_payload(payload: Any) -> Tuple[bool, Optional[str]]:
 
     if not (0.0 <= float(payload["indoor_humidity"]) <= 100.0):
         return False, "indoor_humidity must be between 0 and 100"
+
+    if "air_quality" in payload and payload["air_quality"] is not None:
+        try:
+            float(payload["air_quality"])
+        except (ValueError, TypeError):
+            return False, "air_quality must be numeric"
+
+    if "motion" in payload and payload["motion"] is not None:
+        if not isinstance(payload["motion"], bool):
+            return False, "motion must be a boolean"
+
+    if "timestamp" in payload and payload["timestamp"] is not None:
+        try:
+            datetime.fromisoformat(str(payload["timestamp"]).replace("Z", "+00:00"))
+        except ValueError:
+            return False, "timestamp must be a valid ISO-8601 string"
 
     return True, None

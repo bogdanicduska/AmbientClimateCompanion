@@ -25,7 +25,7 @@ class Config:
     OPENWEATHER_URL     = "https://api.openweathermap.org/data/2.5/weather"
 
     # Shared secret between the M5Stack device and this backend
-    API_KEY = os.getenv("API_KEY", "changeme")
+    DEVICE_AUTH_TOKEN = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 
     # Google credentials (local dev only — on Cloud Run the service account is injected automatically)
     GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
