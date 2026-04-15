@@ -1,32 +1,50 @@
-from fastapi import APIRouter, HTTPException, Query
+from flask import Blueprint, jsonify, request, current_app
 
-from app.services.bigquery_service import get_latest, get_history
-from app.schemas.responses import WeatherRecord, HistoryResponse
-from app.utils.logger import get_logger
+from app.services.bigquery_service import get_latest_reading, get_history
 
-router = APIRouter()
-logger = get_logger(__name__)
+latest_bp = Blueprint("latest", __name__)
 
 
-@router.get("/latest", response_model=WeatherRecord)
+@latest_bp.get("/latest")
 def latest():
-    """
-    Return the most recent record from BigQuery.
-    The M5Stack calls this on startup to pre-fill the screen
-    even before the first new reading arrives.
-    """
-    record = get_latest()
-    if record is None:
-        raise HTTPException(status_code=404, detail="No records found in BigQuery yet")
-    return record
+    """Return the most recent record for a given device."""
+    device_id = request.args.get("device_id")
+
+    if not device_id:
+        return jsonify({"success": False, "message": "device_id is required"}), 400
+
+    try:
+        row = get_latest_reading(device_id, current_app.config)
+
+        if row is None:
+            return jsonify({"success": False, "message": "No data found for this device"}), 404
+
+        return jsonify({"success": True, "data": row}), 200
+
+    except Exception:
+        current_app.logger.exception("Latest reading query failed")
+        return jsonify({"success": False, "message": "Internal server error"}), 500
 
 
-@router.get("/history", response_model=HistoryResponse)
-def history(days: int = Query(default=7, ge=1, le=30)):
-    """
-    Return all records from the last N days.
-    Used by the speech layer to answer questions like
-    'what was the temperature yesterday?'
-    """
-    records = get_history(days=days)
-    return HistoryResponse(count=len(records), records=records)
+@latest_bp.get("/history")
+def history():
+    """Return all records for a device from the last N days (default 7, max 30)."""
+    device_id = request.args.get("device_id")
+
+    if not device_id:
+        return jsonify({"success": False, "message": "device_id is required"}), 400
+
+    try:
+        days = int(request.args.get("days", 7))
+        if not (1 <= days <= 30):
+            raise ValueError
+    except ValueError:
+        return jsonify({"success": False, "message": "days must be an integer between 1 and 30"}), 400
+
+    try:
+        records = get_history(device_id, current_app.config, days=days)
+        return jsonify({"success": True, "count": len(records), "data": records}), 200
+
+    except Exception:
+        current_app.logger.exception("History query failed")
+        return jsonify({"success": False, "message": "Internal server error"}), 500
