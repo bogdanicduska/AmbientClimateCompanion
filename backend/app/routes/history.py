@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, request, current_app
 
 from app.services.bigquery_service import get_history
+from app.utils.logger import get_logger
 
 history_bp = Blueprint("history", __name__)
+logger = get_logger(__name__)
 
 
 @history_bp.get("/history")
@@ -20,10 +22,13 @@ def history():
     except ValueError:
         return jsonify({"success": False, "message": "hours must be an integer between 1 and 168"}), 400
 
+    logger.info(f"History requested for {device_id} — last {hours}h")
+
     try:
         records = get_history(device_id, current_app.config, hours=hours)
+        logger.info(f"History returned {len(records)} records for {device_id}")
         return jsonify({"success": True, "count": len(records), "data": records}), 200
 
     except Exception:
-        current_app.logger.exception("History query failed")
+        current_app.logger.exception(f"History query failed for {device_id}")
         return jsonify({"success": False, "message": "Internal server error"}), 500

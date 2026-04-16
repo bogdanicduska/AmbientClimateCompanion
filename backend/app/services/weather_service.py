@@ -25,6 +25,7 @@ def fetch_outdoor_weather(config) -> Dict[str, Any]:
         )
         response.raise_for_status()
         data = response.json()
+        logger.info(f"Weather fetch successful — {config['OPENWEATHER_CITY']}: {data['weather'][0]['description']}, {data['main']['temp']}°C")
 
         return {
             "outdoor_temp":     round(data["main"]["temp"], 1),
@@ -34,7 +35,7 @@ def fetch_outdoor_weather(config) -> Dict[str, Any]:
             "weather_status":   "live",
         }
     except Exception as e:
-        logger.error(f"OpenWeatherMap fetch failed: {e}")
+        logger.error(f"Weather fetch failed: {e}")
         return {
             "outdoor_temp":     None,
             "outdoor_humidity": None,
