@@ -1,1 +1,94 @@
-{"components":[{"id":"_coretwoscreen","createTime":1775917802877,"name":"screen","x":0,"y":0,"width":320,"height":240,"backgroundColor":"#FFFFFF","backgroundImage":"","size":0,"screenType":"default","type":"screen"},{"id":"____buttonA","createTime":1775917802878,"name":"ButtonA","buttonIndex":0,"x":35,"y":216,"width":64,"height":24,"text":"ButtonA","visibility":false,"type":"button"},{"id":"____buttonB","createTime":1775917802878,"name":"ButtonB","buttonIndex":1,"x":125,"y":216,"width":64,"height":24,"text":"ButtonB","visibility":false,"type":"button"},{"id":"____buttonC","createTime":1775917802878,"name":"ButtonC","buttonIndex":2,"x":215,"y":216,"width":64,"height":24,"text":"ButtonC","visibility":false,"type":"button"}],"type":"core2","versions":"Beta","units":[],"hats":[],"stamps":[],"chains":[],"blockly":"<block type=\"basic_on_setup\" id=\"setup_block\" deletable=\"false\" x=\"50\" y=\"50\"></block>","Blockly.Remotes":[],"Blockly.RemotePlus":[{"id":"__title","blockId":"","createTime":1775917802822,"name":"M5RemoteTitle","dragAndDrop":false,"resizable":false,"options":{"minWidth":1,"minHeight":1,"maxWidth":6,"maxHeight":10,"defaultWidth":2,"defaultHeight":1},"w":2,"h":1,"bgColor":"#0080FF","color":"#fff","fontsize":"M","label":"M5Remote","interval":3000,"code":"","event":"","dataSource":"none","ezdataToken":"QEzkG8JCdxtARcrd6IiOn6W5C2FIx1eI","topic":"","needShadow":false,"type":"title","x":null,"y":null}],"modules":[],"cbIdList_":[],"eventCBIdList_":[],"apikey":"11FF4548","uuid":"18ca3a10-add4-4077-95dc-52729e4d7196"}
+from m5stack import *
+from m5ui import *
+from uiflow import *
+import unit
+import urequests
+import ujson
+
+setScreenColor(0x111111)
+
+env3 = unit.get(unit.ENV3, unit.PORTC)
+pir = unit.get(unit.PIR, unit.PORTB)
+tvoc = unit.get(unit.TVOC, unit.PORTA)
+
+BACKEND_URL = "https://ambient-climate-backend-977755576323.europe-west6.run.app/ingest"
+API_KEY = "weather2026"
+SEND_EVERY = 5
+loop_count = 0
+
+while True:
+    try:
+        temperature = round(env3.temperature, 1)
+        humidity = round(env3.humidity, 1)
+        motion = pir.state
+        tvoc_val = tvoc.TVOC
+        eco2_val = tvoc.eCO2
+
+        try:
+            pressure = round(env3.pressure, 1)
+            pressure_text = str(pressure) + " hPa"
+        except:
+            pressure = None
+            pressure_text = "N/A"
+
+        if motion == 1:
+            motion_text = "Detected"
+            motion_color = 0x00FF00
+        else:
+            motion_text = "No Motion"
+            motion_color = 0xFFFFFF
+
+        lcd.clear(0x111111)
+        lcd.font(lcd.FONT_DejaVu18)
+        lcd.print("Home Monitor", 20, 5, 0xFFFFFF)
+        lcd.print("Temp: " + str(temperature) + " C", 20, 30, 0x00FFCC)
+        lcd.print("Humid: " + str(humidity) + " %", 20, 55, 0x66CCFF)
+        lcd.print("Press: " + pressure_text, 20, 80, 0x99CCFF)
+        lcd.print("TVOC: " + str(tvoc_val) + " ppb", 20, 105, 0xFF99FF)
+        lcd.print("eCO2: " + str(eco2_val) + " ppm", 20, 130, 0xFFCC99)
+        lcd.print("Motion: " + motion_text, 20, 155, motion_color)
+
+        lcd.rect(0, 190, 320, 50, 0x111111, 0x111111)
+
+        if loop_count % SEND_EVERY == 0:
+            lcd.print("Sending...", 20, 200, 0xFFAA00)
+
+            payload_dict = {
+                "api_key": API_KEY,
+                "indoor_temp": temperature,
+                "indoor_humidity": humidity,
+                "air_quality": tvoc_val,
+                "motion": (motion == 1),
+                "indoor_eco2": eco2_val
+            }
+
+            if pressure is not None:
+                payload_dict["indoor_pressure"] = pressure
+
+            payload = ujson.dumps(payload_dict)
+
+            r = urequests.post(
+                BACKEND_URL,
+                headers={"Content-Type": "application/json"},
+                data=payload
+            )
+
+            status_code = r.status_code
+            response_text = r.text
+            r.close()
+
+            lcd.rect(0, 190, 320, 50, 0x111111, 0x111111)
+
+            if status_code == 200:
+                lcd.print("Synced!", 20, 200, 0x00FF00)
+            else:
+                lcd.print("HTTP " + str(status_code), 20, 200, 0xFF0000)
+
+    except Exception as e:
+        lcd.clear(0x111111)
+        lcd.font(lcd.FONT_DejaVu18)
+        lcd.print("Sensor Error", 20, 90, 0xFF0000)
+        lcd.print(str(e), 20, 115, 0xFF6666)
+
+    loop_count += 1
+    wait(60)
