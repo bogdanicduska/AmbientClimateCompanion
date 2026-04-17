@@ -62,6 +62,21 @@ def insert_telemetry_row(row: Dict[str, Any], config) -> None:
     logger.info(f"Record inserted: {row.get('timestamp')} — device: {row.get('device_id')}")
 
 
+def _events_table_ref(config) -> str:
+    return f"{config['GCP_PROJECT_ID']}.{config['BIGQUERY_DATASET']}.device_events"
+
+
+def insert_event_row(row: Dict[str, Any], config) -> None:
+    client = get_bigquery_client()
+    table = _events_table_ref(config)
+    errors = client.insert_rows_json(table, [row])
+
+    if errors:
+        raise RuntimeError(f"BigQuery event insert failed for table {table}: {errors}")
+
+    logger.info(f"Event inserted: {row.get('event_type')} — device: {row.get('device_id')}")
+
+
 def get_latest_reading(device_id: str, config) -> Optional[Dict]:
     """Return the most recent row for a given device, ordered by measurement timestamp."""
     client = get_bigquery_client()
