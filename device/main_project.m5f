@@ -63,9 +63,11 @@ forecast           = []
 last_send_time     = 0
 last_wx_time       = 0
 last_read_time     = 0
+last_cloud_ts      = None
 humidity_alerted   = False
 aq_alerted         = False
 prev_motion        = 0
+wifi_was_up        = True
 
 # -------------------------------------------------------
 # WiFi helpers  (unchanged, working)
@@ -195,7 +197,7 @@ def send_event(event_type, details=None):
 def sync_from_cloud():
     global last_temp, last_humidity, last_pressure, last_pressure_text
     global last_tvoc, last_eco2, last_motion, outdoor_temp, outdoor_desc
-    global outdoor_humidity, data_source
+    global outdoor_humidity, data_source, last_cloud_ts
     import urequests, ujson
     r = urequests.get(BACKEND_BASE_URL + "/latest?device_id=" + DEVICE_ID)
     status = r.status_code
@@ -218,8 +220,31 @@ def sync_from_cloud():
     if d.get("outdoor_temp")     is not None: outdoor_temp = d["outdoor_temp"]
     if d.get("outdoor_humidity") is not None: outdoor_humidity = d["outdoor_humidity"]
     if d.get("outdoor_weather")  is not None: outdoor_desc = d["outdoor_weather"]
+    if d.get("timestamp")        is not None: last_cloud_ts = str(d["timestamp"])
     data_source = "cloud"
     return True, None
+
+# -------------------------------------------------------
+# Events + WiFi helpers
+# -------------------------------------------------------
+def get_wifi_rssi():
+    try:
+        return network.WLAN(network.STA_IF).status("rssi")
+    except:
+        return None
+
+def send_event(event_type, details=None):
+    try:
+        import urequests, ujson
+        payload = {"device_id": DEVICE_ID, "event_type": event_type}
+        if details is not None:
+            payload["details"] = details
+        r = urequests.post(BACKEND_EVENTS,
+                           headers={"Content-Type": "application/json",
+                                    "Authorization": "Bearer " + AUTH_TOKEN},
+                           data=ujson.dumps(payload))
+        r.close()
+    except: pass
 
 # -------------------------------------------------------
 # Weather / forecast  (working)
@@ -414,6 +439,7 @@ def update_forecast():
             lbl_fc_desc[i].setText(f["desc"][:8])
         else:
             lbl_fc_day[i].setText("---")
+            
             lbl_fc_temp[i].setText("--/--")
             lbl_fc_desc[i].setText("---")
 
@@ -462,10 +488,11 @@ draw_text("Fetching cloud data...", "", "", 0xFFCC00)
 try:
     ok, err = sync_from_cloud()
     if ok:
-        l1 = "T:" + (str(last_temp) if last_temp is not None else "-") + \
-             "  H:" + (str(int(last_humidity)) if last_humidity is not None else "-") + "%"
-        l2 = "TVOC:" + (str(int(last_tvoc)) if last_tvoc is not None else "-") + \
-             "  eCO2:" + (str(int(last_eco2)) if last_eco2 is not None else "-")
+        ts_disp = (last_cloud_ts[:16].replace("T", " ")) if last_cloud_ts else "no timestamp"
+        l1 = "Last: " + ts_disp
+        l2 = "T:" + (str(last_temp) if last_temp is not None else "-") + \
+             " H:" + (str(int(last_humidity)) if last_humidity is not None else "-") + "%" + \
+             " TVOC:" + (str(int(last_tvoc)) if last_tvoc is not None else "-")
         send_event("cache_loaded")
         draw_text("Cloud sync OK", l1, l2, 0x00FF66, 0x00FFCC, 0x88FF88)
         wait(7)
@@ -538,6 +565,16 @@ while True:
         update_aq()
         update_header()
 
+        # WiFi drop detection
+        try:
+            _wlan_up = network.WLAN(network.STA_IF).isconnected()
+            if wifi_was_up and not _wlan_up:
+                wifi_was_up = False
+                send_event("wifi_disconnected")
+            elif not wifi_was_up and _wlan_up:
+                wifi_was_up = True
+        except: pass
+
     # Telemetry every SEND_EVERY s
     if last_temp is not None and (now - last_send_time) >= SEND_EVERY:
         last_send_time = now
@@ -549,14 +586,12 @@ while True:
                        "indoor_eco2": last_eco2}
             if last_pressure is not None:
                 payload["indoor_pressure"] = last_pressure
-            try:
-                wlan = network.WLAN(network.STA_IF)
-                rssi = wlan.status("rssi")
-                if rssi is not None:
-                    payload["wifi_rssi"] = rssi
-            except: pass
+            rssi = get_wifi_rssi()
+            if rssi is not None:
+                payload["wifi_rssi"] = rssi
             r = urequests.post(BACKEND_TELEMETRY,
-                               headers={"Content-Type": "application/json"},
+                               headers={"Content-Type": "application/json",
+                                        "Authorization": "Bearer " + AUTH_TOKEN},
                                data=ujson.dumps(payload))
             status = r.status_code
             r.close()
