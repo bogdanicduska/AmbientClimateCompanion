@@ -21,6 +21,7 @@ WIFI_NETWORKS = [
 ]
 
 LAST_WIFI_FILE    = "/flash/last_wifi.txt"
+LAST_STATE_FILE   = "/flash/last_state.json"
 BACKEND_BASE_URL  = "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1"
 BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
@@ -64,6 +65,7 @@ last_send_time     = 0
 last_wx_time       = 0
 last_read_time     = 0
 last_cloud_ts      = None
+last_cache_ts      = None
 humidity_alerted   = False
 aq_alerted         = False
 prev_motion        = 0
@@ -223,6 +225,49 @@ def sync_from_cloud():
     if d.get("timestamp")        is not None: last_cloud_ts = str(d["timestamp"])
     data_source = "cloud"
     return True, None
+
+# -------------------------------------------------------
+# Flash state cache
+# -------------------------------------------------------
+def save_last_state():
+    try:
+        import ujson
+        state = {
+            "temp": last_temp, "humidity": last_humidity,
+            "pressure": last_pressure, "tvoc": last_tvoc,
+            "eco2": last_eco2, "motion": bool(last_motion),
+            "outdoor_temp": outdoor_temp, "outdoor_desc": outdoor_desc,
+            "outdoor_humidity": outdoor_humidity,
+            "timestamp": fmt_datetime(), "data_source": data_source,
+        }
+        with open(LAST_STATE_FILE, "w") as f:
+            f.write(ujson.dumps(state))
+    except: pass
+
+def load_last_state():
+    global last_temp, last_humidity, last_pressure, last_pressure_text
+    global last_tvoc, last_eco2, last_motion, outdoor_temp, outdoor_desc
+    global outdoor_humidity, data_source, last_cache_ts
+    try:
+        import ujson
+        with open(LAST_STATE_FILE, "r") as f:
+            s = ujson.loads(f.read())
+        if s.get("temp")             is not None: last_temp          = s["temp"]
+        if s.get("humidity")         is not None: last_humidity      = s["humidity"]
+        if s.get("pressure")         is not None:
+            last_pressure      = s["pressure"]
+            last_pressure_text = str(int(s["pressure"]))
+        if s.get("tvoc")             is not None: last_tvoc          = s["tvoc"]
+        if s.get("eco2")             is not None: last_eco2          = s["eco2"]
+        if s.get("motion")           is not None: last_motion        = 1 if s["motion"] else 0
+        if s.get("outdoor_temp")     is not None: outdoor_temp       = s["outdoor_temp"]
+        if s.get("outdoor_desc")     is not None: outdoor_desc       = s["outdoor_desc"]
+        if s.get("outdoor_humidity") is not None: outdoor_humidity   = s["outdoor_humidity"]
+        last_cache_ts = s.get("timestamp")
+        data_source = "cache"
+        return last_cache_ts
+    except:
+        return None
 
 # -------------------------------------------------------
 # Events + WiFi helpers
@@ -459,6 +504,9 @@ def update_all():
 # Boot sequence
 # -------------------------------------------------------
 
+# 0. Load flash cache (silent — populates state before any network)
+load_last_state()
+
 # 1. WiFi
 draw_wifi_menu()
 while True:
@@ -474,45 +522,34 @@ while True:
         wait(2); draw_wifi_menu()
     wait_ms(50)
 
-# 2. NTP
-draw_text("Syncing time...", "", "", 0xFFCC00)
-try:
-    ntp_sync()
-    draw_text("Time synced", fmt_datetime(), "", 0x00FF66, 0x00FFCC)
-except Exception as e:
-    draw_text("Time sync failed", str(e)[:30], "Continuing...", 0xFF8800, 0xAAAAAA, 0x888888)
-wait(1)
-
-# 3. Cloud sync
-draw_text("Fetching cloud data...", "", "", 0xFFCC00)
-try:
-    ok, err = sync_from_cloud()
-    if ok:
-        ts_disp = (last_cloud_ts[:16].replace("T", " ")) if last_cloud_ts else "no timestamp"
-        l1 = "Last: " + ts_disp
-        l2 = "T:" + (str(last_temp) if last_temp is not None else "-") + \
-             " H:" + (str(int(last_humidity)) if last_humidity is not None else "-") + "%" + \
-             " TVOC:" + (str(int(last_tvoc)) if last_tvoc is not None else "-")
-        send_event("cache_loaded")
-        draw_text("Cloud sync OK", l1, l2, 0x00FF66, 0x00FFCC, 0x88FF88)
-        wait(7)
-    else:
-        draw_text("Cloud sync failed", err or "Unknown error", "Continuing...", 0xFF8800, 0xAAAAAA, 0x888888)
-        wait(2)
-except Exception as e:
-    err_msg = str(e)
-    draw_text("Cloud sync error", err_msg[:28], err_msg[28:56], 0xFF4444, 0xFFAA00, 0x888888)
-    wait(4)
-
-# 4. Live weather
-draw_text("Fetching weather...", "", "", 0xFFCC00)
-fetch_outdoor_weather()
-fetch_forecast()
-
-# 5. Draw dashboard
+# 2. Draw dashboard with cached state immediately
 draw_frame()
 init_labels()
 update_all()
+
+# 3. NTP — silent, just update clock labels
+try:
+    ntp_sync()
+    lbl_time.setText(fmt_time())
+    lbl_date.setText(fmt_date())
+except: pass
+
+# 4. Cloud sync — overwrite only if cloud data is fresher than cache
+try:
+    ok, err = sync_from_cloud()
+    if ok:
+        send_event("cache_loaded")
+        cloud_norm  = (last_cloud_ts or "")[:19].replace("T", " ")
+        cache_norm  = (last_cache_ts or "")[:19]
+        if cloud_norm >= cache_norm:
+            update_all()
+except: pass
+
+# 5. Weather — update outdoor section silently
+fetch_outdoor_weather()
+fetch_forecast()
+update_outdoor()
+update_forecast()
 
 # -------------------------------------------------------
 # Main loop
@@ -564,6 +601,7 @@ while True:
         update_indoor()
         update_aq()
         update_header()
+        save_last_state()
 
         # WiFi drop detection
         try:
@@ -609,5 +647,6 @@ while True:
         fetch_forecast()
         update_outdoor()
         update_forecast()
+        save_last_state()
 
     wait(1)

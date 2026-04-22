@@ -12,6 +12,20 @@ An IoT system that collects indoor climate data from an M5Stack device, enriches
 - Authenticates with the backend using a shared device token
 - Sends telemetry to the backend `/telemetry` endpoint over Wi-Fi
 
+**Hardware wiring (M5Stack Core2)**
+
+| Sensor | Unit | Port |
+|--------|------|------|
+| ENV III (temp / humidity / pressure) | `unit.ENV3` | PORTC |
+| PIR motion sensor | `unit.PIR` | PORTB |
+| TVOC / eCO2 sensor | `unit.TVOC` | PORTA |
+
+**Device screenshots**
+
+| Dashboard | WiFi menu |
+|-----------|-----------|
+| ![Dashboard](docs/device_dashboard.jpeg) | ![WiFi menu](docs/device_wifi_menu.jpeg) |
+
 ### Backend — Flask REST API (`backend/`)
 Python 3.11 / Flask application containerised with Docker, designed to run on Google Cloud Run.
 
