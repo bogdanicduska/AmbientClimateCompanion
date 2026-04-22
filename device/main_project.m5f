@@ -31,9 +31,10 @@ AUTH_TOKEN        = "weather2026"
 OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
 OWM_CITY          = "Lausanne"
 
-SEND_EVERY    = 300
-WEATHER_EVERY = 1800
-TZ_OFFSET     = 2
+SEND_EVERY         = 300
+WEATHER_EVERY      = 1800
+WIFI_RETRY_EVERY   = 60
+TZ_OFFSET          = 2
 
 HUMIDITY_LOW_THRESHOLD = 40
 AQ_POOR_THRESHOLD      = 150
@@ -70,6 +71,15 @@ humidity_alerted   = False
 aq_alerted         = False
 prev_motion        = 0
 wifi_was_up        = True
+network_state      = "online"   # online | offline
+telemetry_state    = "idle"     # idle | ok | failed
+weather_state      = "fresh"    # fresh | stale | failed
+cloud_sync_state   = "none"     # none | ok | failed
+last_good_send_time      = 0
+last_good_wx_time        = 0
+last_wifi_retry_time     = 0
+last_motion_trigger_time = 0
+last_cloud_sync_time     = 0
 
 # -------------------------------------------------------
 # WiFi helpers  (unchanged, working)
@@ -272,6 +282,24 @@ def load_last_state():
 # -------------------------------------------------------
 # Events + WiFi helpers
 # -------------------------------------------------------
+def wifi_connected():
+    try:
+        return network.WLAN(network.STA_IF).isconnected()
+    except:
+        return False
+
+def silent_reconnect():
+    try:
+        import wifiCfg
+        ssid, pwd = get_wifi_order()[0]
+        wifiCfg.doConnect(ssid, pwd)
+        ok, _ = wait_for_connection(8)
+        if ok:
+            save_last_wifi(ssid)
+        return ok
+    except:
+        return False
+
 def get_wifi_rssi():
     try:
         return network.WLAN(network.STA_IF).status("rssi")
@@ -295,7 +323,7 @@ def send_event(event_type, details=None):
 # Weather / forecast  (working)
 # -------------------------------------------------------
 def fetch_outdoor_weather():
-    global outdoor_temp, outdoor_desc, outdoor_humidity
+    global outdoor_temp, outdoor_desc, outdoor_humidity, weather_state, last_good_wx_time
     try:
         import urequests, ujson
         r = urequests.get("https://api.openweathermap.org/data/2.5/weather?q=" +
@@ -305,14 +333,20 @@ def fetch_outdoor_weather():
         outdoor_temp     = round(d["main"]["temp"], 1)
         outdoor_desc     = d["weather"][0]["description"]
         outdoor_humidity = d["main"]["humidity"]
-    except: pass
+        weather_state    = "fresh"
+        last_good_wx_time = utime.time()
+    except:
+        if outdoor_temp is not None:
+            weather_state = "stale"
+        else:
+            weather_state = "failed"
 
 def fetch_forecast():
     global forecast
     try:
         import urequests, ujson
         r = urequests.get("https://api.openweathermap.org/data/2.5/forecast?q=" +
-                          OWM_CITY + "&appid=" + OWM_API_KEY + "&units=metric&cnt=24")
+                          OWM_CITY + "&appid=" + OWM_API_KEY + "&units=metric&cnt=40")
         raw = r.text; r.close()
         d = ujson.loads(raw)
         today_t   = utime.localtime()
@@ -399,32 +433,35 @@ def draw_frame():
     lcd.print("PRESS", 222, 102, 0x555555)
 
 # Labels are created in init_labels() after draw_frame() — not at module level
-lbl_dot = lbl_date = lbl_time = None
+lbl_dot = lbl_date = lbl_time = lbl_source = None
+lbl_msg = None
 lbl_out_temp = lbl_out_unit = lbl_out_cond = lbl_out_hum = None
 lbl_in_temp = lbl_in_hum = lbl_in_press = None
 lbl_aq_val = lbl_eco2 = None
 lbl_fc_day = lbl_fc_temp = lbl_fc_desc = [None]*3
 
 def init_labels():
-    global lbl_dot, lbl_date, lbl_time
+    global lbl_dot, lbl_date, lbl_time, lbl_source, lbl_msg
     global lbl_out_temp, lbl_out_unit, lbl_out_cond, lbl_out_hum
     global lbl_in_temp, lbl_in_hum, lbl_in_press
     global lbl_aq_val, lbl_eco2
     global lbl_fc_day, lbl_fc_temp, lbl_fc_desc
 
     # Header
-    lbl_dot  = M5TextBox(6,   5, "*",           lcd.FONT_DejaVu18, 0x00FF66)
-    lbl_date = M5TextBox(22,  5, "--- -- ---",  lcd.FONT_DejaVu18, 0x888888)
-    lbl_time = M5TextBox(245, 5, "--:--",       lcd.FONT_DejaVu18, 0xFFFF00)
+    lbl_dot    = M5TextBox(6,   5, "*",           lcd.FONT_DejaVu18, 0x00FF66)
+    lbl_date   = M5TextBox(22,  5, "--- -- ---",  lcd.FONT_DejaVu18, 0x888888)
+    lbl_source = M5TextBox(160, 5, "LIVE",          lcd.FONT_DejaVu18, 0x00FF66)
+    lbl_time   = M5TextBox(245, 5, "--:--",       lcd.FONT_DejaVu18, 0xFFFF00)
 
     # Hero outdoor: big temp + unit + condition + humidity
     lbl_out_temp = M5TextBox(35,  32, "--.-",    lcd.FONT_DejaVu40, 0xFFFFFF)
-    lbl_out_unit = M5TextBox(165, 55, "C",       lcd.FONT_DejaVu18, 0xAAAAAA)
-    lbl_out_cond = M5TextBox(10,  80, "---",     lcd.FONT_DejaVu18, 0x6699BB)
+    lbl_out_unit = M5TextBox(112, 55, "°C",      lcd.FONT_DejaVu18, 0xAAAAAA)
+    lbl_msg      = M5TextBox(175, 38, "",         lcd.FONT_DejaVu18, 0x888888)
+    lbl_out_cond = M5TextBox(10,  80, "---",     lcd.FONT_DejaVu18, 0x446688)
     lbl_out_hum  = M5TextBox(220, 80, "HUM --%", lcd.FONT_DejaVu18, 0x888888)
 
     # Indoor strip values
-    lbl_in_temp  = M5TextBox(12,  119, "--.-C",    lcd.FONT_DejaVu18, 0x00FFCC)
+    lbl_in_temp  = M5TextBox(12,  119, "--.-°C", lcd.FONT_DejaVu18, 0x00FFCC)
     lbl_in_hum   = M5TextBox(118, 119, "-- %",     lcd.FONT_DejaVu18, 0x66CCFF)
     lbl_in_press = M5TextBox(222, 119, "---- hPa", lcd.FONT_DejaVu18, 0x99CCFF)
 
@@ -433,18 +470,60 @@ def init_labels():
     lbl_eco2   = M5TextBox(215, 153, "eCO2 ---",  lcd.FONT_DejaVu18, 0xFFCC99)
 
     # Forecast 3 columns
-    lbl_fc_day  = [M5TextBox(12+i*107, 186, "---",   lcd.FONT_DejaVu18, 0xAAAAAA) for i in range(3)]
-    lbl_fc_temp = [M5TextBox(12+i*107, 206, "--/--", lcd.FONT_DejaVu18, 0x88CCFF) for i in range(3)]
-    lbl_fc_desc = [M5TextBox(12+i*107, 224, "---",   lcd.FONT_DejaVu18, 0x777777) for i in range(3)]
+    lbl_fc_day  = [M5TextBox(12+i*107, 184, "---",   lcd.FONT_DejaVu18, 0xAAAAAA) for i in range(3)]
+    lbl_fc_temp = [M5TextBox(12+i*107, 202, "--/--", lcd.FONT_DejaVu18, 0x88CCFF) for i in range(3)]
+    lbl_fc_desc = [M5TextBox(12+i*107, 220, "---",   lcd.FONT_DejaVu18, 0x777777) for i in range(3)]
 
 # -------------------------------------------------------
 # Update functions — setText only, no lcd.clear
 # -------------------------------------------------------
+def source_badge_text_and_color():
+    if network_state == "offline":
+        return "OFFLINE", 0xFF4444
+    if telemetry_state == "failed":
+        return "SEND FAIL", 0xFF8800
+    if weather_state in ("stale", "failed"):
+        if data_source == "live":
+            return "LIVE/WX", 0xFFCC00
+        return "WX STALE", 0xFFCC00
+    if data_source == "cloud":
+        return "CLOUD", 0xFFCC00
+    if data_source == "cache":
+        return "CACHED", 0x888888
+    return "LIVE", 0x00FF66
+
+def get_status_message():
+    if network_state == "offline":
+        return "Offline",     0xFF3333   # critical red
+    if telemetry_state == "failed":
+        return "Sync failed", 0xFF7700   # warning orange
+    if last_tvoc is not None and last_tvoc >= AQ_POOR_THRESHOLD:
+        return "Poor air",    0xFF5500   # alert orange-red
+    if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
+        return "Dry air",     0xFF8800   # caution orange
+    if cloud_sync_state == "ok" and utime.time() - last_cloud_sync_time < 15:
+        return "Cloud sync",  0xFFCC00   # recovered yellow — 15 s window
+    if utime.time() - last_motion_trigger_time < 8:
+        return "Motion!",     0x00CC55   # info green — 8 s cooldown
+    if last_good_wx_time > 0 and utime.time() - last_good_wx_time < 30:
+        return "WX updated",  0x5599BB   # info blue-gray — 30 s window
+    if last_tvoc is not None and last_tvoc < 100:
+        return "Fresh air",   0x00CC55   # good green
+    return "", 0x444444
+
+def update_status_line():
+    text, color = get_status_message()
+    lbl_msg.setText(text)
+    lbl_msg.setColor(color)
+
 def update_header():
     wlan = network.WLAN(network.STA_IF)
     lbl_dot.setColor(0x00FF66 if wlan.isconnected() else 0xFF4444)
     lbl_date.setText(fmt_date())
     lbl_time.setText(fmt_time())
+    text, color = source_badge_text_and_color()
+    lbl_source.setText(text)
+    lbl_source.setColor(color)
 
 def update_outdoor():
     if outdoor_temp is not None:
@@ -455,9 +534,9 @@ def update_outdoor():
 
 def update_indoor():
     if last_temp is not None:
-        lbl_in_temp.setText(str(last_temp) + "C")
+        lbl_in_temp.setText(str(last_temp) + "°C")
     else:
-        lbl_in_temp.setText("--.-C")
+        lbl_in_temp.setText("--.-°C")
     if last_humidity is not None:
         lbl_in_hum.setText(str(int(last_humidity)) + " %")
     else:
@@ -492,6 +571,8 @@ def update_all():
     try: update_header()
     except: pass
     try: update_outdoor()
+    except: pass
+    try: update_status_line()
     except: pass
     try: update_indoor()
     except: pass
@@ -538,11 +619,19 @@ except: pass
 try:
     ok, err = sync_from_cloud()
     if ok:
+        cloud_sync_state   = "ok"
+        network_state      = "online"
+        last_cloud_sync_time = utime.time()
         send_event("cache_loaded")
         cloud_norm  = (last_cloud_ts or "")[:19].replace("T", " ")
         cache_norm  = (last_cache_ts or "")[:19]
         if cloud_norm >= cache_norm:
             update_all()
+    else:
+        cloud_sync_state = "failed"
+        if last_cache_ts:
+            data_source = "cache"
+        update_header()
 except: pass
 
 # 5. Weather — update outdoor section silently
@@ -572,8 +661,7 @@ while True:
                 last_pressure      = round(env3.pressure, 1)
                 last_pressure_text = str(int(last_pressure))
             except:
-                last_pressure      = None
-                last_pressure_text = "---"
+                pass  # keep last known pressure
             data_source = "live"
             last_read_time = now
 
@@ -594,23 +682,31 @@ while True:
                     aq_alerted = False
 
             if last_motion == 1 and prev_motion == 0:
+                last_motion_trigger_time = now
                 send_event("motion_triggered")
             prev_motion = last_motion
 
         except: pass
         update_indoor()
         update_aq()
+        update_status_line()
         update_header()
         save_last_state()
 
-        # WiFi drop detection
+        # WiFi drop detection + network_state + silent retry
         try:
-            _wlan_up = network.WLAN(network.STA_IF).isconnected()
+            _wlan_up = wifi_connected()
+            network_state = "online" if _wlan_up else "offline"
             if wifi_was_up and not _wlan_up:
                 wifi_was_up = False
                 send_event("wifi_disconnected")
             elif not wifi_was_up and _wlan_up:
                 wifi_was_up = True
+            if not _wlan_up and (now - last_wifi_retry_time) >= WIFI_RETRY_EVERY:
+                last_wifi_retry_time = now
+                if silent_reconnect():
+                    wifi_was_up = True
+                    network_state = "online"
         except: pass
 
     # Telemetry every SEND_EVERY s
@@ -634,11 +730,19 @@ while True:
             status = r.status_code
             r.close()
             if status in (200, 201):
+                telemetry_state     = "idle"
+                network_state       = "online"
+                last_good_send_time = now
                 send_event("cloud_sync_ok")
             else:
+                telemetry_state = "failed"
                 send_event("cloud_sync_failed", {"status": status})
         except Exception as e:
+            telemetry_state = "failed"
+            network_state   = "offline"
             send_event("cloud_sync_failed", {"error": str(e)[:60]})
+        update_header()
+        update_status_line()
 
     # Weather refresh every WEATHER_EVERY s
     if (now - last_wx_time) >= WEATHER_EVERY:
@@ -647,6 +751,8 @@ while True:
         fetch_forecast()
         update_outdoor()
         update_forecast()
+        update_header()
+        update_status_line()
         save_last_state()
 
     wait(1)

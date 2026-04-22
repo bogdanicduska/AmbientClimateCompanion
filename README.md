@@ -7,10 +7,57 @@ An IoT system that collects indoor climate data from an M5Stack device, enriches
 ## What has been built
 
 ### Device — M5Stack sensor (`device/`)
-- M5Stack project (`main_project.m5f`) that reads indoor sensors every 5 minutes
-- Captures: temperature, humidity, air quality, eCO2, atmospheric pressure, motion, Wi-Fi RSSI
-- Authenticates with the backend using a shared device token
-- Sends telemetry to the backend `/telemetry` endpoint over Wi-Fi
+- M5Stack project (`main_project.m5f`) running UIFlow1 / MicroPython on M5Stack Core2
+- Reads sensors every 60 s; sends telemetry to the backend every 5 minutes
+- Captures: temperature, humidity, air quality (TVOC ppb), eCO2, atmospheric pressure, motion, Wi-Fi RSSI
+- Fetches live outdoor weather and 3-day forecast from OpenWeatherMap directly on-device
+- Authenticates with the backend using a shared device token (`Authorization: Bearer`)
+- Sends structured event logs to the backend `/events` endpoint (boot, WiFi, cloud sync, alerts)
+
+**Boot sequence**
+
+1. Load flash state cache (`/flash/last_state.json`) — dashboard shows last known values instantly
+2. Connect Wi-Fi — tries a priority-ordered list of networks (last successful network first)
+3. Sync NTP — sets RTC with configurable timezone offset (`TZ_OFFSET = 2`)
+4. Cloud sync — fetches `/latest` from backend; applies cloud data only if it is fresher than the local cache
+5. Fetch outdoor weather + 3-day forecast from OpenWeatherMap
+6. Enter main loop
+
+**Offline resilience**
+
+- Flash cache persists all sensor values, outdoor weather, and data source across reboots
+- Silent WiFi reconnect every 60 s in the background without touching the screen
+- Failed sensor reads preserve the last known value (non-destructive inner `except: pass`)
+- State machine tracks `network_state`, `telemetry_state`, `weather_state`, `cloud_sync_state`
+
+**Dashboard UI (320 × 240, dark background)**
+
+```
+┌────────────────────────────────────────┐
+│  ● Thu 17 Apr   LIVE            14:32  │  header: dot, date, badge, time
+├────────────────────────────────────────┤
+│     23.4 °C          Sync failed       │  hero: outdoor temp, status strip
+│  Partly cloudy               HUM 62%  │
+├────────────────────────────────────────┤
+│  TEMP    │   HUMID   │   PRESS         │  indoor strip
+│  21.1°C  │   58 %    │   1013 hPa     │
+├────────────────────────────────────────┤
+│  [ GOOD ]   45 ppb         eCO2 412   │  AQ strip
+├────────────────────────────────────────┤
+│  Mon       │  Tue      │  Wed          │  3-day forecast
+│  16/23°C   │  14/20°C  │  15/22°C     │
+│  Clouds    │  Rain     │  Clear        │
+└────────────────────────────────────────┘
+```
+
+- **Source badge** (header): `LIVE` / `CLOUD` / `CACHED` / `OFFLINE` / `SEND FAIL` / `WX STALE` — color-coded by severity
+- **Status strip** (hero row, right side): priority-ordered contextual message — `Offline` › `Sync failed` › `Poor air` › `Dry air` › `Cloud sync` (15 s) › `Motion!` (8 s cooldown) › `WX updated` (30 s) › `Fresh air`
+
+**Alerts (sent as events to backend)**
+
+- Humidity drops below 40 % → `humidity_alert` event (edge-triggered, resets when condition clears)
+- TVOC ≥ 150 ppb → `air_quality_alert` event (edge-triggered)
+- Motion detected → `motion_triggered` event (8 s cooldown before re-trigger)
 
 **Hardware wiring (M5Stack Core2)**
 
@@ -36,6 +83,7 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 | `POST` | `/telemetry` | Receive sensor payload from M5Stack, enrich with outdoor weather, insert into BigQuery |
 | `GET` | `/latest?device_id=` | Return the most recent record for a device |
 | `GET` | `/history?device_id=&hours=` | Return records for the last N hours (default 24, max 168) |
+| `POST` | `/events` | Receive structured device event logs (boot, WiFi, alerts, sync) |
 | `GET` | `/weather` | Return current outdoor weather from OpenWeatherMap |
 | `GET` | `/health` | Liveness check used by Cloud Run |
 
