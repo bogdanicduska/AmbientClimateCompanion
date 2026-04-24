@@ -10,6 +10,7 @@ VALID_EVENT_TYPES = {
     "air_quality_alert",
     "boot_recovered",
     "announcement_spoken",
+    "motion_triggered",
     "speech_query_received",
     "speech_summary_spoken",
 }

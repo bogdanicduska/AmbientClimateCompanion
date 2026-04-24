@@ -3,6 +3,7 @@ db-dtypes
 python-dotenv==1.2.2
 google-cloud-bigquery==3.41.0
 openai==1.55.0
+httpx<0.28.0
 requests==2.33.1
 gunicorn==25.3.0
 pydantic==2.12.5
