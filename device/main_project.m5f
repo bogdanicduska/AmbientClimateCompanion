@@ -40,6 +40,17 @@ HUMIDITY_LOW_THRESHOLD = 40
 AQ_POOR_THRESHOLD      = 150
 AQ_HAZARD_THRESHOLD    = 200
 
+# Room performance scoring bands  (Day 4 formulas will use these)
+READY_TEMP_MIN      = 20    # C  — ideal range for focus / presence
+READY_TEMP_MAX      = 24
+RECOVERY_TEMP_MIN   = 18    # C  — ideal range for rest / calm
+RECOVERY_TEMP_MAX   = 22
+HUMIDITY_OPTIMAL_MIN = 40   # %
+HUMIDITY_OPTIMAL_MAX = 60
+TVOC_GOOD_MAX       = 100   # ppb
+TVOC_MODERATE_MAX   = 150
+TVOC_POOR_MAX       = 200
+
 # -------------------------------------------------------
 # Units
 # -------------------------------------------------------
