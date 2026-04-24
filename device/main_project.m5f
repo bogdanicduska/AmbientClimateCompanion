@@ -476,146 +476,182 @@ def aq_status(tvoc_val):
     return "HAZARDOUS", 0xAA0000
 
 # -------------------------------------------------------
-# UI  —  static frame + label objects
+# UI  —  WHOOP-for-Room dashboard layout
 # -------------------------------------------------------
 #
 #  320 x 240
-#  ┌─────────────────────────────────────┐  y=0
-#  │  ● Thu 17 Apr              14:32   │  y=0-24  header
-#  ├─────────────────────────────────────┤  y=25
-#  │  OUTDOOR                           │  y=27-99  hero
-#  │        23.4                        │
-#  │                 °C                 │
-#  │  Partly Cloudy          HUM 62%    │
-#  ├─────────────────────────────────────┤  y=100
-#  │  TEMP    │  HUMID   │  PRESS       │  y=101-139  indoor strip
-#  │  21.1°C  │  58 %    │  1013 hPa   │
-#  ├─────────────────────────────────────┤  y=140
-#  │  AIR QUALITY    [  GOOD  ] 45 ppb  │  y=141-179  AQ strip
-#  │  eCO2: 412 ppm                     │
-#  ├─────────────────────────────────────┤  y=180
-#  │  Mon        Tue        Wed         │  y=181-239  forecast
-#  │  16/23°C    14/20°C   15/22°C     │
-#  │  Clouds     Rain       Clear       │
-#  └─────────────────────────────────────┘
+#  ┌─────────────────────────────────────────┐  y=0
+#  │  ● Thu 23 Apr  15:11             LIVE  │  y=0-22   header
+#  ├──────────────────────┬──────────────────┤  y=23
+#  │  READINESS           │  RECOVERY        │  y=24-107 hero
+#  │       82             │    76            │
+#  │  [  FRESH  ]         │    Good          │
+#  │                      │    Out: 9.3 C    │
+#  ├──────┬───────────────┴──────┬───────────┤  y=108
+#  │STRAIN│ 22.4 C               │ TVOC 118  │  y=109-177 tiles
+#  │  31  │  48 %                │ CO2  540  │
+#  │ Low  │ 1026 hPa             │ Active    │
+#  ├──────┴──────────────────────┴───────────┤  y=178
+#  │  Room is fresh and ready.               │  y=179-239 insight
+#  │                         ROOM RHYTHM     │
+#  └─────────────────────────────────────────┘
 
 BG = 0x0D0D0D
 
 def draw_frame():
     lcd.clear(BG)
-    # Horizontal dividers
-    lcd.line(0,  25, 320,  25, 0x2A2A2A)
-    lcd.line(0, 100, 320, 100, 0x2A2A2A)
-    lcd.line(0, 138, 320, 138, 0x2A2A2A)
-    lcd.line(0, 180, 320, 180, 0x2A2A2A)
-    # Indoor column dividers
-    lcd.line(107, 101, 107, 137, 0x222222)
-    lcd.line(213, 101, 213, 137, 0x222222)
-    # Forecast column dividers
-    lcd.line(107, 182, 107, 239, 0x222222)
-    lcd.line(213, 182, 213, 239, 0x222222)
-    # Indoor static micro-labels (top of each column)
+    # Header divider
+    lcd.line(0,  23, 320,  23, 0x2A2A2A)
+    # Hero vertical split (Readiness | Recovery)
+    lcd.line(200, 23, 200, 108, 0x222222)
+    # Hero / tile divider
+    lcd.line(0, 108, 320, 108, 0x2A2A2A)
+    # Tile column dividers
+    lcd.line(80,  109, 80,  177, 0x222222)
+    lcd.line(200, 109, 200, 177, 0x222222)
+    # Tile / insight divider
+    lcd.line(0, 178, 320, 178, 0x2A2A2A)
+    # Static section micro-labels
     lcd.font(lcd.FONT_DejaVu18)
-    lcd.print("TEMP",        12, 102, 0x555555)
-    lcd.print("HUMID",      118, 102, 0x555555)
-    lcd.print("PRESS",      222, 102, 0x555555)
-    # Product identity — dim watermark in AQ row 2 right side
-    lcd.print("ROOM RHYTHM", 195, 161, 0x222222)
+    lcd.print("READINESS", 10,  26, 0x333333)
+    lcd.print("RECOVERY",  205, 26, 0x333333)
+    lcd.print("STRAIN",    8,  110, 0x444444)
+    # Product identity watermark
+    lcd.print("ROOM RHYTHM", 175, 224, 0x222222)
 
-# Labels are created in init_labels() after draw_frame() — not at module level
+# Labels created in init_labels() after draw_frame()
 lbl_dot = lbl_date = lbl_time = lbl_source = None
-lbl_msg = None
-lbl_out_temp = lbl_out_unit = lbl_out_cond = lbl_out_hum = None
-lbl_in_temp = lbl_in_hum = lbl_in_press = None
-lbl_aq_val = lbl_eco2 = None
-lbl_fc_day = lbl_fc_temp = lbl_fc_desc = [None]*3
+lbl_readiness = lbl_recovery = lbl_recovery_level = lbl_out_info = None
+lbl_strain_score = lbl_strain_level = None
+lbl_temp = lbl_hum = lbl_press = None
+lbl_tvoc = lbl_eco2 = lbl_rhythm = None
+lbl_insight = None
 
 def init_labels():
-    global lbl_dot, lbl_date, lbl_time, lbl_source, lbl_msg
-    global lbl_out_temp, lbl_out_unit, lbl_out_cond, lbl_out_hum
-    global lbl_in_temp, lbl_in_hum, lbl_in_press
-    global lbl_aq_val, lbl_eco2
-    global lbl_fc_day, lbl_fc_temp, lbl_fc_desc
+    global lbl_dot, lbl_date, lbl_time, lbl_source
+    global lbl_readiness, lbl_recovery, lbl_recovery_level, lbl_out_info
+    global lbl_strain_score, lbl_strain_level
+    global lbl_temp, lbl_hum, lbl_press
+    global lbl_tvoc, lbl_eco2, lbl_rhythm
+    global lbl_insight
 
     # Header
-    lbl_dot    = M5TextBox(6,   5, "*",           lcd.FONT_DejaVu18, 0x00FF66)
-    lbl_date   = M5TextBox(22,  5, "--- -- ---",  lcd.FONT_DejaVu18, 0x888888)
-    lbl_source = M5TextBox(160, 5, "LIVE",          lcd.FONT_DejaVu18, 0x00FF66)
-    lbl_time   = M5TextBox(245, 5, "--:--",       lcd.FONT_DejaVu18, 0xFFFF00)
+    lbl_dot    = M5TextBox(6,   5, "*",          lcd.FONT_DejaVu18, 0x00FF66)
+    lbl_date   = M5TextBox(22,  5, "--- -- ---", lcd.FONT_DejaVu18, 0x888888)
+    lbl_source = M5TextBox(258, 5, "LIVE",        lcd.FONT_DejaVu18, 0x00FF66)
+    lbl_time   = M5TextBox(170, 5, "--:--",      lcd.FONT_DejaVu18, 0xFFFF00)
 
-    # Hero outdoor: big temp + unit + condition + humidity
-    lbl_out_temp = M5TextBox(35,  32, "--.-",    lcd.FONT_DejaVu40, 0xFFFFFF)
-    lbl_out_unit = M5TextBox(112, 55, "C",       lcd.FONT_DejaVu18, 0xAAAAAA)
-    lbl_msg      = M5TextBox(175, 38, "",         lcd.FONT_DejaVu18, 0x888888)
-    lbl_out_cond = M5TextBox(10,  80, "---",     lcd.FONT_DejaVu18, 0x446688)
-    lbl_out_hum  = M5TextBox(220, 80, "HUM --%", lcd.FONT_DejaVu18, 0x888888)
+    # Hero left — Room Readiness (big score)
+    lbl_readiness = M5TextBox(10, 44, "--", lcd.FONT_DejaVu40, 0xFFFFFF)
 
-    # Indoor strip values
-    lbl_in_temp  = M5TextBox(12,  119, "--.- C", lcd.FONT_DejaVu18, 0x00FFCC)
-    lbl_in_hum   = M5TextBox(118, 119, "-- %",     lcd.FONT_DejaVu18, 0x66CCFF)
-    lbl_in_press = M5TextBox(222, 119, "---- hPa", lcd.FONT_DejaVu18, 0x99CCFF)
+    # Hero right — Recovery Score + level + outdoor info
+    lbl_recovery       = M5TextBox(205, 46, "--",   lcd.FONT_DejaVu18, 0x66CCFF)
+    lbl_recovery_level = M5TextBox(205, 68, "---",  lcd.FONT_DejaVu18, 0x4488BB)
+    lbl_out_info       = M5TextBox(205, 88, "---",  lcd.FONT_DejaVu18, 0x444444)
 
-    # AQ strip — row 1: chip + ppb value; row 2: eCO2
-    lbl_aq_val = M5TextBox(148, 141, "--- ppb",   lcd.FONT_DejaVu18, 0xCCCCCC)
-    lbl_eco2   = M5TextBox(10,  161, "CO2 ---",   lcd.FONT_DejaVu18, 0xFFCC99)
+    # Tiles — col 1: Air Strain (x=0..79)
+    lbl_strain_score = M5TextBox(8, 128, "--",    lcd.FONT_DejaVu18, 0xFFFFFF)
+    lbl_strain_level = M5TextBox(8, 150, "---",   lcd.FONT_DejaVu18, 0x00CC55)
 
-    # Forecast 3 columns
-    lbl_fc_day  = [M5TextBox(12+i*107, 184, "---",   lcd.FONT_DejaVu18, 0xAAAAAA) for i in range(3)]
-    lbl_fc_temp = [M5TextBox(12+i*107, 202, "--/--", lcd.FONT_DejaVu18, 0x88CCFF) for i in range(3)]
-    lbl_fc_desc = [M5TextBox(12+i*107, 220, "---",   lcd.FONT_DejaVu18, 0x777777) for i in range(3)]
+    # Tiles — col 2: Climate (x=80..199)
+    lbl_temp  = M5TextBox(88, 114, "--.- C",   lcd.FONT_DejaVu18, 0x00FFCC)
+    lbl_hum   = M5TextBox(88, 134, "-- %",     lcd.FONT_DejaVu18, 0x66CCFF)
+    lbl_press = M5TextBox(88, 154, "---- hPa", lcd.FONT_DejaVu18, 0x888888)
+
+    # Tiles — col 3: AQ + Rhythm (x=200..319)
+    lbl_tvoc   = M5TextBox(206, 114, "TVOC ---", lcd.FONT_DejaVu18, 0xCCCCCC)
+    lbl_eco2   = M5TextBox(206, 134, "CO2  ---", lcd.FONT_DejaVu18, 0xFFCC99)
+    lbl_rhythm = M5TextBox(206, 154, "---",      lcd.FONT_DejaVu18, 0x888888)
+
+    # Insight strip
+    lbl_insight = M5TextBox(10, 190, "", lcd.FONT_DejaVu18, 0x666666)
 
 # -------------------------------------------------------
-# Update functions — setText only, no lcd.clear
+# UI helpers
 # -------------------------------------------------------
 def source_badge_text_and_color():
     if network_state == "offline":
-        return "OFFLINE", 0xFF4444
+        return "OFFLINE",   0xFF4444
     if telemetry_state == "failed":
         return "SEND FAIL", 0xFF8800
     if weather_state in ("stale", "failed"):
         if data_source == "live":
             return "LIVE/WX", 0xFFCC00
-        return "WX OLD", 0xFFCC00
+        return "WX OLD",    0xFFCC00
     if data_source == "cloud":
-        return "CLOUD", 0xFFCC00
+        return "CLOUD",     0xFFCC00
     if data_source == "cache":
-        return "CACHED", 0x888888
+        return "CACHED",    0x888888
     return "LIVE", 0x00FF66
 
-def get_status_message():
-    # System alerts — highest priority
+def room_state_color():
+    colors = {
+        "Fresh":         0x006633,
+        "Calm":          0x224466,
+        "Dry":           0x885500,
+        "Heavy":         0xAA2200,
+        "Social":        0x555500,
+        "Sleep-Friendly":0x223355,
+        "Restless":      0x884400,
+    }
+    return colors.get(room_state, 0x333333)
+
+def readiness_color(score):
+    if score is None:  return 0x555555
+    if score >= 75:    return 0x00CC55
+    if score >= 50:    return 0xFFCC00
+    return 0xFF5500
+
+def recovery_level_label(score):
+    if score is None:  return "---",    0x555555
+    if score >= 75:    return "Good",   0x00CC55
+    if score >= 50:    return "Fair",   0xFFCC00
+    return "Low",   0xFF7700
+
+def strain_level_label(score):
+    if score is None:  return "---",     0x555555
+    if score < 30:     return "Low",     0x00CC55
+    if score < 60:     return "Rising",  0xFFAA00
+    return "High",  0xFF3300
+
+def strain_color(score):
+    if score is None:  return 0x555555
+    if score < 30:     return 0x00CC55
+    if score < 60:     return 0xFFAA00
+    return 0xFF3300
+
+def rhythm_label():
+    now = utime.time()
+    if now - last_motion_trigger_time < 120:
+        return "Active", 0x00CC55
+    if last_motion == 1:
+        return "Present", 0x88AA00
+    return "Quiet", 0x444444
+
+def get_room_insight():
     if network_state == "offline":
-        return "Offline",        0xFF3333
+        return "Offline. Showing cached data.", 0xFF4444
     if telemetry_state == "failed":
-        return "Sync failed",    0xFF7700
-    # Room performance — shown when state is computed
+        return "Sync failed. Data may be stale.", 0xFF7700
     if room_state == "Heavy":
-        return "Air strain",     0xFF5500
+        return "Air heavy. Try ventilating.", 0xFF5500
     if room_state == "Dry":
-        return "Dry air",        0xFF8800
+        return "Dry air. Humidity is low.", 0xFF8800
     if room_state == "Restless":
-        return "Restless",       0xFFAA00
-    # Transient system events
-    if cloud_sync_state == "ok" and utime.time() - last_cloud_sync_time < 15:
-        return "Room synced",    0xFFCC00
-    if utime.time() - last_motion_trigger_time < 8:
-        return "Motion",         0x00CC55
-    if last_good_wx_time > 0 and utime.time() - last_good_wx_time < 30:
-        return "Weather fresh",  0x5599BB
-    # Room state — positive / idle
-    if room_state in ("Fresh", "Sleep-Friendly"):
-        return room_state,       0x00CC55
-    if room_state == "Calm":
-        return "Calm",           0x4488BB
+        return "Room conditions unbalanced.", 0xFFAA00
+    if room_state == "Sleep-Friendly":
+        return "Sleep-friendly. Rest well.", 0x5599BB
+    if room_state == "Fresh":
+        return "Room is fresh and ready.", 0x00CC55
     if room_state == "Social":
-        return "Social",         0xAAAA00
-    return "", 0x444444
+        return "Room active. Strain may rise.", 0xAAAA00
+    if room_state == "Calm":
+        return "Calm. Recovery conditions good.", 0x4488BB
+    return "Monitoring room conditions.", 0x444444
 
-def update_status_line():
-    text, color = get_status_message()
-    lbl_msg.setText(text)
-    lbl_msg.setColor(color)
-
+# -------------------------------------------------------
+# Update functions — setText/setColor only, no lcd.clear
+# -------------------------------------------------------
 def update_header():
     wlan = network.WLAN(network.STA_IF)
     lbl_dot.setColor(0x00FF66 if wlan.isconnected() else 0xFF4444)
@@ -625,61 +661,67 @@ def update_header():
     lbl_source.setText(text)
     lbl_source.setColor(color)
 
-def update_outdoor():
-    if outdoor_temp is not None:
-        lbl_out_temp.setText(str(outdoor_temp))
-    lbl_out_cond.setText((outdoor_desc or "---")[:20])
-    if outdoor_humidity is not None:
-        lbl_out_hum.setText("HUM " + str(int(outdoor_humidity)) + "%")
+def update_hero():
+    # Readiness big score + color
+    score_r = room_readiness if room_readiness is not None else 0
+    lbl_readiness.setText(str(score_r) if room_readiness is not None else "--")
+    lbl_readiness.setColor(readiness_color(room_readiness))
 
-def update_indoor():
-    if last_temp is not None:
-        lbl_in_temp.setText(str(last_temp) + " C")
-    else:
-        lbl_in_temp.setText("--.- C")
-    if last_humidity is not None:
-        lbl_in_hum.setText(str(int(last_humidity)) + " %")
-    else:
-        lbl_in_hum.setText("-- %")
-    lbl_in_press.setText(last_pressure_text + " hPa")
-
-def update_aq():
-    status, color = aq_status(last_tvoc)
-    # Chip drawn as a filled rect, text printed on top (no label overwrite issues)
-    chip_w = max(len(status) * 13 + 10, 50)
-    lcd.rect(10, 140, chip_w, 19, color, color)
+    # State chip drawn with lcd (dynamic width + color)
+    chip_label = room_state if room_state != "---" else "---"
+    chip_w = max(len(chip_label) * 13 + 10, 50)
+    chip_c = room_state_color()
+    lcd.rect(75, 52, chip_w, 20, chip_c, chip_c)
     lcd.font(lcd.FONT_DejaVu18)
-    text_x = 10 + (chip_w - len(status) * 13) // 2
-    if text_x < 12: text_x = 12
-    lcd.print(status, text_x, 143, 0xFFFFFF)
-    lbl_aq_val.setText((str(int(last_tvoc)) if last_tvoc is not None else "---") + " ppb")
-    lbl_eco2.setText("CO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"))
+    tx = 75 + (chip_w - len(chip_label) * 13) // 2
+    if tx < 77: tx = 77
+    lcd.print(chip_label.upper(), tx, 54, 0xFFFFFF)
 
-def update_forecast():
-    for i in range(3):
-        if i < len(forecast):
-            f = forecast[i]
-            lbl_fc_day[i].setText(f["day"])
-            lbl_fc_temp[i].setText(str(f["min"]) + "/" + str(f["max"]))
-            lbl_fc_desc[i].setText(f["desc"][:8])
-        else:
-            lbl_fc_day[i].setText("---")
-            
-            lbl_fc_temp[i].setText("--/--")
-            lbl_fc_desc[i].setText("---")
+    # Recovery score + level + outdoor
+    score_v = recovery_score if recovery_score is not None else 0
+    lbl_recovery.setText(str(score_v) if recovery_score is not None else "--")
+    level_text, level_color = recovery_level_label(recovery_score)
+    lbl_recovery_level.setText(level_text)
+    lbl_recovery_level.setColor(level_color)
+    if outdoor_temp is not None:
+        lbl_out_info.setText("Out: " + str(outdoor_temp) + " C")
+    else:
+        lbl_out_info.setText("Out: --")
+
+def update_tiles():
+    # Air Strain
+    score_s = air_strain if air_strain is not None else 0
+    lbl_strain_score.setText(str(score_s) if air_strain is not None else "--")
+    lbl_strain_score.setColor(strain_color(air_strain))
+    level_text, level_color = strain_level_label(air_strain)
+    lbl_strain_level.setText(level_text)
+    lbl_strain_level.setColor(level_color)
+
+    # Climate
+    lbl_temp.setText((str(last_temp) + " C") if last_temp is not None else "--.- C")
+    lbl_hum.setText((str(int(last_humidity)) + " %") if last_humidity is not None else "-- %")
+    lbl_press.setText(last_pressure_text + " hPa")
+
+    # AQ + Rhythm
+    lbl_tvoc.setText("TVOC " + (str(int(last_tvoc)) if last_tvoc is not None else "---"))
+    lbl_eco2.setText("CO2  " + (str(int(last_eco2)) if last_eco2 is not None else "---"))
+    r_text, r_color = rhythm_label()
+    lbl_rhythm.setText(r_text)
+    lbl_rhythm.setColor(r_color)
+
+def update_insight():
+    text, color = get_room_insight()
+    lbl_insight.setText(text)
+    lbl_insight.setColor(color)
 
 def update_all():
     try: update_header()
     except: pass
-    try: update_outdoor()
+    try: update_hero()
     except: pass
-    try: update_status_line()
+    try: update_tiles()
     except: pass
-    try: update_indoor()
-    except: pass
-    try: update_aq()
-    except: pass
-    try: update_forecast()
+    try: update_insight()
     except: pass
 
 # -------------------------------------------------------
@@ -736,11 +778,9 @@ try:
         update_header()
 except: pass
 
-# 5. Weather — update outdoor section silently
+# 5. Weather — fetch and update hero outdoor info
 fetch_outdoor_weather()
-fetch_forecast()
-update_outdoor()
-update_forecast()
+update_hero()
 
 # -------------------------------------------------------
 # Main loop
@@ -791,9 +831,9 @@ while True:
             compute_room_metrics()
 
         except: pass
-        update_indoor()
-        update_aq()
-        update_status_line()
+        update_hero()
+        update_tiles()
+        update_insight()
         update_header()
         save_last_state()
 
@@ -846,17 +886,15 @@ while True:
             network_state   = "offline"
             send_event("room_sync_failed", {"error": str(e)[:60]})
         update_header()
-        update_status_line()
+        update_insight()
 
     # Weather refresh every WEATHER_EVERY s
     if (now - last_wx_time) >= WEATHER_EVERY:
         last_wx_time = now
         fetch_outdoor_weather()
-        fetch_forecast()
-        update_outdoor()
-        update_forecast()
+        update_hero()
         update_header()
-        update_status_line()
+        update_insight()
         save_last_state()
 
     wait(1)
