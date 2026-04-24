@@ -552,7 +552,7 @@ def source_badge_text_and_color():
     if weather_state in ("stale", "failed"):
         if data_source == "live":
             return "LIVE/WX", 0xFFCC00
-        return "WX STALE", 0xFFCC00
+        return "WX OLD", 0xFFCC00
     if data_source == "cloud":
         return "CLOUD", 0xFFCC00
     if data_source == "cache":
@@ -672,7 +672,7 @@ draw_wifi_menu()
 while True:
     if btnA.wasPressed() or btnC.wasPressed():
         if auto_connect_wifi():
-            send_event("boot_recovered")
+            send_event("room_online")
             break
         draw_wifi_menu()
     if btnB.wasPressed():
@@ -701,7 +701,7 @@ try:
         cloud_sync_state   = "ok"
         network_state      = "online"
         last_cloud_sync_time = utime.time()
-        send_event("cache_loaded")
+        send_event("room_state_restored")
         cloud_norm  = (last_cloud_ts or "")[:19].replace("T", " ")
         cache_norm  = (last_cache_ts or "")[:19]
         if cloud_norm >= cache_norm:
@@ -814,14 +814,14 @@ while True:
                 telemetry_state     = "idle"
                 network_state       = "online"
                 last_good_send_time = now
-                send_event("cloud_sync_ok")
+                send_event("room_synced")
             else:
                 telemetry_state = "failed"
-                send_event("cloud_sync_failed", {"status": status})
+                send_event("room_sync_failed", {"status": status})
         except Exception as e:
             telemetry_state = "failed"
             network_state   = "offline"
-            send_event("cloud_sync_failed", {"error": str(e)[:60]})
+            send_event("room_sync_failed", {"error": str(e)[:60]})
         update_header()
         update_status_line()
 
