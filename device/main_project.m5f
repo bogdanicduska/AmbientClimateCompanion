@@ -255,6 +255,10 @@ def save_last_state():
             "outdoor_temp": outdoor_temp, "outdoor_desc": outdoor_desc,
             "outdoor_humidity": outdoor_humidity,
             "timestamp": fmt_datetime(), "data_source": data_source,
+            "room_readiness": room_readiness,
+            "recovery_score": recovery_score,
+            "air_strain": air_strain,
+            "room_state": room_state,
         }
         with open(LAST_STATE_FILE, "w") as f:
             f.write(ujson.dumps(state))
@@ -264,6 +268,7 @@ def load_last_state():
     global last_temp, last_humidity, last_pressure, last_pressure_text
     global last_tvoc, last_eco2, last_motion, outdoor_temp, outdoor_desc
     global outdoor_humidity, data_source, last_cache_ts
+    global room_readiness, recovery_score, air_strain, room_state
     try:
         import ujson
         with open(LAST_STATE_FILE, "r") as f:
@@ -279,6 +284,10 @@ def load_last_state():
         if s.get("outdoor_temp")     is not None: outdoor_temp       = s["outdoor_temp"]
         if s.get("outdoor_desc")     is not None: outdoor_desc       = s["outdoor_desc"]
         if s.get("outdoor_humidity") is not None: outdoor_humidity   = s["outdoor_humidity"]
+        if s.get("room_readiness")   is not None: room_readiness     = s["room_readiness"]
+        if s.get("recovery_score")   is not None: recovery_score     = s["recovery_score"]
+        if s.get("air_strain")       is not None: air_strain         = s["air_strain"]
+        if s.get("room_state")       is not None: room_state         = s["room_state"]
         last_cache_ts = s.get("timestamp")
         data_source = "cache"
         return last_cache_ts
@@ -654,8 +663,9 @@ def update_all():
 # Boot sequence
 # -------------------------------------------------------
 
-# 0. Load flash cache (silent — populates state before any network)
+# 0. Load flash cache — room has memory before any network call
 load_last_state()
+compute_room_metrics()
 
 # 1. WiFi
 draw_wifi_menu()
