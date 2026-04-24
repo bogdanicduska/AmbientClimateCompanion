@@ -455,19 +455,19 @@ def init_labels():
 
     # Hero outdoor: big temp + unit + condition + humidity
     lbl_out_temp = M5TextBox(35,  32, "--.-",    lcd.FONT_DejaVu40, 0xFFFFFF)
-    lbl_out_unit = M5TextBox(112, 55, "°C",      lcd.FONT_DejaVu18, 0xAAAAAA)
+    lbl_out_unit = M5TextBox(112, 55, "C",       lcd.FONT_DejaVu18, 0xAAAAAA)
     lbl_msg      = M5TextBox(175, 38, "",         lcd.FONT_DejaVu18, 0x888888)
     lbl_out_cond = M5TextBox(10,  80, "---",     lcd.FONT_DejaVu18, 0x446688)
     lbl_out_hum  = M5TextBox(220, 80, "HUM --%", lcd.FONT_DejaVu18, 0x888888)
 
     # Indoor strip values
-    lbl_in_temp  = M5TextBox(12,  119, "--.-°C", lcd.FONT_DejaVu18, 0x00FFCC)
+    lbl_in_temp  = M5TextBox(12,  119, "--.- C", lcd.FONT_DejaVu18, 0x00FFCC)
     lbl_in_hum   = M5TextBox(118, 119, "-- %",     lcd.FONT_DejaVu18, 0x66CCFF)
     lbl_in_press = M5TextBox(222, 119, "---- hPa", lcd.FONT_DejaVu18, 0x99CCFF)
 
-    # AQ strip (chip drawn manually; these are the text beside it)
-    lbl_aq_val = M5TextBox(130, 153, "--- ppb",   lcd.FONT_DejaVu18, 0xCCCCCC)
-    lbl_eco2   = M5TextBox(215, 153, "eCO2 ---",  lcd.FONT_DejaVu18, 0xFFCC99)
+    # AQ strip — row 1: chip + ppb value; row 2: eCO2
+    lbl_aq_val = M5TextBox(148, 141, "--- ppb",   lcd.FONT_DejaVu18, 0xCCCCCC)
+    lbl_eco2   = M5TextBox(10,  161, "CO2 ---",   lcd.FONT_DejaVu18, 0xFFCC99)
 
     # Forecast 3 columns
     lbl_fc_day  = [M5TextBox(12+i*107, 184, "---",   lcd.FONT_DejaVu18, 0xAAAAAA) for i in range(3)]
@@ -534,9 +534,9 @@ def update_outdoor():
 
 def update_indoor():
     if last_temp is not None:
-        lbl_in_temp.setText(str(last_temp) + "°C")
+        lbl_in_temp.setText(str(last_temp) + " C")
     else:
-        lbl_in_temp.setText("--.-°C")
+        lbl_in_temp.setText("--.- C")
     if last_humidity is not None:
         lbl_in_hum.setText(str(int(last_humidity)) + " %")
     else:
@@ -546,13 +546,14 @@ def update_indoor():
 def update_aq():
     status, color = aq_status(last_tvoc)
     # Chip drawn as a filled rect, text printed on top (no label overwrite issues)
-    lcd.rect(10, 147, 110, 24, color, color)
+    chip_w = max(len(status) * 13 + 10, 50)
+    lcd.rect(10, 140, chip_w, 19, color, color)
     lcd.font(lcd.FONT_DejaVu18)
-    text_x = 10 + (110 - len(status) * 11) // 2
+    text_x = 10 + (chip_w - len(status) * 13) // 2
     if text_x < 12: text_x = 12
-    lcd.print(status, text_x, 151, 0xFFFFFF)
+    lcd.print(status, text_x, 143, 0xFFFFFF)
     lbl_aq_val.setText((str(int(last_tvoc)) if last_tvoc is not None else "---") + " ppb")
-    lbl_eco2.setText("eCO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"))
+    lbl_eco2.setText("CO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"))
 
 def update_forecast():
     for i in range(3):
