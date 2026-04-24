@@ -516,9 +516,11 @@ def draw_frame():
     lcd.line(213, 182, 213, 239, 0x222222)
     # Indoor static micro-labels (top of each column)
     lcd.font(lcd.FONT_DejaVu18)
-    lcd.print("TEMP",   12, 102, 0x555555)
-    lcd.print("HUMID", 118, 102, 0x555555)
-    lcd.print("PRESS", 222, 102, 0x555555)
+    lcd.print("TEMP",        12, 102, 0x555555)
+    lcd.print("HUMID",      118, 102, 0x555555)
+    lcd.print("PRESS",      222, 102, 0x555555)
+    # Product identity — dim watermark in AQ row 2 right side
+    lcd.print("ROOM RHYTHM", 195, 161, 0x222222)
 
 # Labels are created in init_labels() after draw_frame() — not at module level
 lbl_dot = lbl_date = lbl_time = lbl_source = None
