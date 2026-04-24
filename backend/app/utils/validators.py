@@ -10,6 +10,8 @@ VALID_EVENT_TYPES = {
     "air_quality_alert",
     "boot_recovered",
     "announcement_spoken",
+    "speech_query_received",
+    "speech_summary_spoken",
 }
 
 
@@ -85,3 +87,64 @@ def validate_event_payload(payload: Any) -> Tuple[bool, Optional[str]]:
             return False, "timestamp must be a valid ISO-8601 string"
 
     return True, None
+
+
+def validate_ask_payload(payload: Any) -> Tuple[bool, Optional[str]]:
+    if payload is None:
+        return False, "Request body must be valid JSON"
+    if not isinstance(payload, dict):
+        return False, "Request body must be a JSON object"
+    if not payload.get("device_id") or not str(payload["device_id"]).strip():
+        return False, "Missing required field: 'device_id'"
+    if not payload.get("question") or not str(payload["question"]).strip():
+        return False, "Missing required field: 'question'"
+    if len(str(payload["question"])) > 300:
+        return False, "question must be 300 characters or fewer"
+    return True, None
+
+
+def validate_tts_payload(payload: Any) -> Tuple[bool, Optional[str]]:
+    if payload is None:
+        return False, "Request body must be valid JSON"
+    if not isinstance(payload, dict):
+        return False, "Request body must be a JSON object"
+    if not payload.get("device_id") or not str(payload["device_id"]).strip():
+        return False, "Missing required field: 'device_id'"
+    if not payload.get("text") and not payload.get("template"):
+        return False, "Provide either 'text' or 'template'"
+    if payload.get("text") and len(str(payload["text"])) > 500:
+        return False, "text must be 500 characters or fewer"
+    return True, None
+
+
+def validate_stt_payload(payload: Any) -> Tuple[bool, Optional[str]]:
+    if payload is None:
+        return False, "Request body must be valid JSON"
+    if not isinstance(payload, dict):
+        return False, "Request body must be a JSON object"
+    if not payload.get("device_id") or not str(payload["device_id"]).strip():
+        return False, "Missing required field: 'device_id'"
+    if not payload.get("audio_b64"):
+        return False, "Missing required field: 'audio_b64'"
+    allowed_formats = {"wav", "webm", "raw", "mp3"}
+    fmt = str(payload.get("format", "wav")).lower()
+    if fmt not in allowed_formats:
+        return False, f"format must be one of: {sorted(allowed_formats)}"
+    try:
+        import base64
+        decoded = base64.b64decode(payload["audio_b64"])
+        if len(decoded) < 1000:
+            return False, "audio_b64 is too short — audio may be empty or corrupt"
+    except Exception:
+        return False, "audio_b64 must be valid base64"
+    return True, None
+
+
+def validate_query_payload(payload: Any) -> Tuple[bool, Optional[str]]:
+    if payload is None:
+        return False, "Request body must be valid JSON"
+    if not isinstance(payload, dict):
+        return False, "Request body must be a JSON object"
+    if not payload.get("device_id") or not str(payload["device_id"]).strip():
+        return False, "Missing required field: 'device_id'"
+    return validate_stt_payload(payload)

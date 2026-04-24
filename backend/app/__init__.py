@@ -7,6 +7,12 @@ from app.routes.latest import latest_bp
 from app.routes.history import history_bp
 from app.routes.weather import weather_bp
 from app.routes.events import events_bp
+from app.routes.forecast import forecast_bp
+from app.routes.speech_ask import speech_ask_bp
+from app.routes.speech_tts import speech_tts_bp
+from app.routes.speech_stt import speech_stt_bp
+from app.routes.speech_query import speech_query_bp
+from app.routes.speech_proactive import speech_proactive_bp
 from app.utils.logger import configure_logging
 
 
@@ -22,6 +28,12 @@ def create_app() -> Flask:
     app.register_blueprint(history_bp, url_prefix="/api/v1")
     app.register_blueprint(weather_bp, url_prefix="/api/v1")
     app.register_blueprint(events_bp, url_prefix="/api/v1")
+    app.register_blueprint(forecast_bp, url_prefix="/api/v1")
+    app.register_blueprint(speech_ask_bp, url_prefix="/api/v1")
+    app.register_blueprint(speech_tts_bp, url_prefix="/api/v1")
+    app.register_blueprint(speech_stt_bp, url_prefix="/api/v1")
+    app.register_blueprint(speech_query_bp, url_prefix="/api/v1")
+    app.register_blueprint(speech_proactive_bp, url_prefix="/api/v1")
 
     @app.route("/")
     def index():

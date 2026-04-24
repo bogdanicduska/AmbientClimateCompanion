@@ -132,3 +132,63 @@ def get_history(device_id: str, config, hours: int = 24) -> List[Dict]:
     except Exception as e:
         logger.error(f"BigQuery get_history failed: {e}")
         raise
+
+
+def get_history_window(device_id: str, config, start_iso: str, end_iso: str) -> List[Dict]:
+    """Return records for a device between two explicit UTC timestamps, ascending."""
+    client = get_bigquery_client()
+
+    query = f"""
+    SELECT {_COLUMNS}
+    FROM `{_table_ref(config)}`
+    WHERE device_id = @device_id
+      AND timestamp >= @start
+      AND timestamp <= @end
+    ORDER BY timestamp ASC
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("device_id", "STRING", device_id),
+            bigquery.ScalarQueryParameter("start", "TIMESTAMP", start_iso),
+            bigquery.ScalarQueryParameter("end", "TIMESTAMP", end_iso),
+        ]
+    )
+
+    try:
+        rows = list(client.query(query, job_config=job_config).result())
+        return [_row_to_dict(r) for r in rows]
+    except Exception as e:
+        logger.error(f"BigQuery get_history_window failed: {e}")
+        raise
+
+
+def get_recent_speech_events(device_id: str, event_type: str, config, hours: int) -> List[Dict]:
+    """Return recent device_events rows for cooldown checks in the proactive service."""
+    client = get_bigquery_client()
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+
+    query = f"""
+    SELECT event_type, timestamp, details
+    FROM `{_events_table_ref(config)}`
+    WHERE device_id = @device_id
+      AND event_type = @event_type
+      AND timestamp >= @since
+    ORDER BY timestamp DESC
+    LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("device_id", "STRING", device_id),
+            bigquery.ScalarQueryParameter("event_type", "STRING", event_type),
+            bigquery.ScalarQueryParameter("since", "TIMESTAMP", since),
+        ]
+    )
+
+    try:
+        rows = list(client.query(query, job_config=job_config).result())
+        return [{"event_type": r.event_type, "timestamp": r.timestamp.isoformat(), "details": r.details} for r in rows]
+    except Exception as e:
+        logger.error(f"BigQuery get_recent_speech_events failed: {e}")
+        raise
