@@ -81,6 +81,12 @@ last_wifi_retry_time     = 0
 last_motion_trigger_time = 0
 last_cloud_sync_time     = 0
 
+# Room performance state
+room_readiness  = None   # 0–100  how ready the room is for focus/presence
+recovery_score  = None   # 0–100  how supportive the room is for rest/calm
+air_strain      = None   # 0–100  how stale/strained the air is
+room_state      = "---"  # Fresh | Calm | Dry | Heavy | Social | Sleep-Friendly | Restless
+
 # -------------------------------------------------------
 # WiFi helpers  (unchanged, working)
 # -------------------------------------------------------
@@ -378,6 +384,58 @@ def fetch_forecast():
     except: pass
 
 # -------------------------------------------------------
+# Room performance metrics  (scoring logic expanded in Day 2+)
+# -------------------------------------------------------
+def compute_room_metrics():
+    global room_readiness, recovery_score, air_strain, room_state
+
+    if last_tvoc is None or last_temp is None or last_humidity is None:
+        room_state = "---"
+        return
+
+    # Air strain: rises with TVOC and low humidity
+    if last_tvoc >= AQ_HAZARD_THRESHOLD:
+        air_strain = 90
+    elif last_tvoc >= AQ_POOR_THRESHOLD:
+        air_strain = 60
+    elif last_tvoc >= 100:
+        air_strain = 30
+    else:
+        air_strain = 10
+
+    # Room readiness: penalise poor air, extreme temps, low humidity
+    base = 100
+    if last_tvoc >= AQ_POOR_THRESHOLD: base -= 40
+    elif last_tvoc >= 100:             base -= 15
+    if last_temp < 18 or last_temp > 26: base -= 20
+    if last_humidity < HUMIDITY_LOW_THRESHOLD: base -= 15
+    room_readiness = max(0, min(100, base))
+
+    # Recovery score: good when cool, calm, fresh air
+    rec = 100
+    if last_tvoc >= AQ_POOR_THRESHOLD: rec -= 40
+    elif last_tvoc >= 100:             rec -= 15
+    if last_temp < 16 or last_temp > 22: rec -= 20
+    if last_motion == 1:               rec -= 10
+    recovery_score = max(0, min(100, rec))
+
+    # Room state label (priority order)
+    if last_tvoc >= AQ_POOR_THRESHOLD:
+        room_state = "Heavy"
+    elif last_humidity < HUMIDITY_LOW_THRESHOLD:
+        room_state = "Dry"
+    elif last_motion == 1 and last_tvoc < 100:
+        room_state = "Social"
+    elif last_tvoc < 100 and 18 <= last_temp <= 24 and last_humidity >= 40:
+        room_state = "Fresh"
+    elif last_temp <= 20 and last_tvoc < 100:
+        room_state = "Sleep-Friendly"
+    elif last_tvoc < 150:
+        room_state = "Calm"
+    else:
+        room_state = "Restless"
+
+# -------------------------------------------------------
 # AQ helpers
 # -------------------------------------------------------
 def aq_status(tvoc_val):
@@ -493,22 +551,32 @@ def source_badge_text_and_color():
     return "LIVE", 0x00FF66
 
 def get_status_message():
+    # System alerts — highest priority
     if network_state == "offline":
-        return "Offline",     0xFF3333   # critical red
+        return "Offline",        0xFF3333
     if telemetry_state == "failed":
-        return "Sync failed", 0xFF7700   # warning orange
-    if last_tvoc is not None and last_tvoc >= AQ_POOR_THRESHOLD:
-        return "Poor air",    0xFF5500   # alert orange-red
-    if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
-        return "Dry air",     0xFF8800   # caution orange
+        return "Sync failed",    0xFF7700
+    # Room performance — shown when state is computed
+    if room_state == "Heavy":
+        return "Air strain",     0xFF5500
+    if room_state == "Dry":
+        return "Dry air",        0xFF8800
+    if room_state == "Restless":
+        return "Restless",       0xFFAA00
+    # Transient system events
     if cloud_sync_state == "ok" and utime.time() - last_cloud_sync_time < 15:
-        return "Cloud sync",  0xFFCC00   # recovered yellow — 15 s window
+        return "Room synced",    0xFFCC00
     if utime.time() - last_motion_trigger_time < 8:
-        return "Motion!",     0x00CC55   # info green — 8 s cooldown
+        return "Motion",         0x00CC55
     if last_good_wx_time > 0 and utime.time() - last_good_wx_time < 30:
-        return "WX updated",  0x5599BB   # info blue-gray — 30 s window
-    if last_tvoc is not None and last_tvoc < 100:
-        return "Fresh air",   0x00CC55   # good green
+        return "Weather fresh",  0x5599BB
+    # Room state — positive / idle
+    if room_state in ("Fresh", "Sleep-Friendly"):
+        return room_state,       0x00CC55
+    if room_state == "Calm":
+        return "Calm",           0x4488BB
+    if room_state == "Social":
+        return "Social",         0xAAAA00
     return "", 0x444444
 
 def update_status_line():
@@ -686,6 +754,8 @@ while True:
                 last_motion_trigger_time = now
                 send_event("motion_triggered")
             prev_motion = last_motion
+
+            compute_room_metrics()
 
         except: pass
         update_indoor()
