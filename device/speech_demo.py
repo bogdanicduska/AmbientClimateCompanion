@@ -4,35 +4,38 @@
 #
 # HOW TO USE
 #   Option 1 (UIFlow1): open this file in UIFlow1's "Python" tab,
-#                       set BACKEND_URL + DEVICE_AUTH_TOKEN, run.
+#                       set the 5 CONFIG values, press Run.
 #   Option 2 (mpremote): mpremote cp speech_demo.py :main.py && mpremote reset
 #
-# WHAT IT DOES
-#   Button A  -> "What is the room readiness right now?"
-#   Button B  -> "How is the air quality right now?"
-#   Button C  -> "Did humidity exceed 50 percent in the last 24 hours?"
+# BUTTONS
+#   A  ->  "What is the room readiness right now?"
+#   B  ->  "How is the air quality right now?"
+#   C  ->  "Did humidity exceed 50 percent in the last 24 hours?"
 #
-# Each press:
-#   1. GET text answer from  /api/v1/speech/ask
-#   2. Display answer on the LCD
-#   3. GET WAV audio from    /api/v1/speech/tts?raw=1   (binary, no base64)
-#   4. Save to /flash/answer.wav
-#   5. Play it through the speaker
+# PROACTIVE BEHAVIOUR
+#   The PIR sensor on PORTB detects motion. When presence is detected
+#   the device asks the backend /speech/proactive — the backend decides
+#   whether to speak. Cooldowns are enforced per trigger (e.g. weather
+#   announcement once per hour, air strain alerts every 2h, etc).
 # -------------------------------------------------------------------
 
 from m5stack import lcd, btnA, btnB, btnC, speaker
+import unit
 import network
 import urequests
+import ujson
 import time
 import gc
 
-# ---------- CONFIG ----------
-BACKEND_URL = "http://192.168.1.100:8080"   # <-- replace with your backend address
-DEVICE_AUTH_TOKEN = "changeme"              # <-- must match backend DEVICE_AUTH_TOKEN
-DEVICE_ID = "m5stack-ana-home"
-
-WIFI_SSID = "your-wifi"                     # <-- or reuse /flash/last_wifi.txt from main project
-WIFI_PASS = "your-wifi-password"
+# =====================================================================
+# CONFIG — edit these 5 values for your setup
+# =====================================================================
+BACKEND_URL       = "https://ambient-climate-backend-977755576323.europe-west6.run.app"
+DEVICE_AUTH_TOKEN = "weather2026"
+DEVICE_ID         = "m5stack-ana-home"
+WIFI_SSID         = "your-wifi"
+WIFI_PASS         = "your-wifi-password"
+# =====================================================================
 
 QUESTIONS = {
     "A": "What is the room readiness right now?",
@@ -40,102 +43,155 @@ QUESTIONS = {
     "C": "Did humidity exceed 50 percent in the last 24 hours?",
 }
 
-# ---------- UI HELPERS ----------
+# Motion-poll throttle — PIR fires fast; we only hit the backend this
+# often at most. The backend has its own per-trigger cooldowns on top.
+MOTION_COOLDOWN_S = 60
+
+# Hardware
+try:
+    pir = unit.get(unit.PIR, unit.PORTB)
+except Exception:
+    pir = None
+
+# State
+_last_motion_handled = 0
+
+
+# =====================================================================
+# UI
+# =====================================================================
 def show(line1, line2=""):
-    lcd.clear()
-    lcd.setCursor(5, 10)
-    lcd.setColor(lcd.WHITE)
-    lcd.print(line1[:40])
-    if line2:
-        lcd.setCursor(5, 40)
-        lcd.setColor(lcd.CYAN)
-        # Wrap long answer text across multiple lines (every ~28 chars)
-        y = 40
-        for i in range(0, len(line2), 28):
-            lcd.setCursor(5, y)
-            lcd.print(line2[i:i+28])
-            y += 20
-            if y > 200:
-                break
+    try:
+        lcd.clear()
+        lcd.setCursor(5, 10)
+        lcd.setColor(lcd.WHITE)
+        lcd.print(line1[:40])
+        if line2:
+            y = 40
+            for i in range(0, len(line2), 28):
+                lcd.setCursor(5, y)
+                lcd.setColor(lcd.CYAN)
+                lcd.print(line2[i:i+28])
+                y += 22
+                if y > 220:
+                    break
+    except Exception:
+        pass
+
 
 def show_idle():
-    show("Ambient Climate — Voice")
-    lcd.setCursor(5, 50)
-    lcd.setColor(lcd.YELLOW)
-    lcd.print("A: Readiness")
-    lcd.setCursor(5, 80)
-    lcd.print("B: Air quality")
-    lcd.setCursor(5, 110)
-    lcd.print("C: Humidity 50%")
-
-# ---------- NETWORK ----------
-def ensure_wifi():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    if wlan.isconnected():
-        return True
-    show("Connecting WiFi...")
-    wlan.connect(WIFI_SSID, WIFI_PASS)
-    for _ in range(30):
-        if wlan.isconnected():
-            return True
-        time.sleep(0.5)
-    show("WiFi FAILED")
-    return False
-
-# ---------- CORE FLOW ----------
-def ask_and_play(question):
     try:
-        show("Thinking...", question)
-        gc.collect()
+        lcd.clear()
+        lcd.setColor(lcd.WHITE)
+        lcd.setCursor(5, 10)
+        lcd.print("Ambient Climate Voice")
+        lcd.setColor(lcd.YELLOW)
+        lcd.setCursor(5, 50)
+        lcd.print("A: Readiness")
+        lcd.setCursor(5, 80)
+        lcd.print("B: Air quality")
+        lcd.setCursor(5, 110)
+        lcd.print("C: Humidity")
+        lcd.setColor(lcd.GREEN)
+        lcd.setCursor(5, 170)
+        lcd.print("Motion -> weather, etc")
+    except Exception:
+        pass
 
-        # 1. Text answer
-        r = urequests.post(
-            BACKEND_URL + "/api/v1/speech/ask",
-            json={"device_id": DEVICE_ID, "question": question},
-            headers={"Authorization": "Bearer " + DEVICE_AUTH_TOKEN,
-                     "Content-Type":  "application/json"},
-        )
+
+# =====================================================================
+# HTTP — build the body manually. MicroPython urequests on UIFlow1 does
+# NOT always honour the json= kwarg; we use data=bytes to be safe.
+# =====================================================================
+def _auth_headers():
+    return {
+        "Authorization": "Bearer " + DEVICE_AUTH_TOKEN,
+        "Content-Type":  "application/json",
+    }
+
+
+def http_post(path, body_dict, raw_response=False):
+    body = ujson.dumps(body_dict).encode("utf-8")
+    url  = BACKEND_URL + path + ("?raw=1" if raw_response else "")
+    return urequests.post(url, data=body, headers=_auth_headers())
+
+
+def http_get(path):
+    return urequests.get(BACKEND_URL + path, headers=_auth_headers())
+
+
+# =====================================================================
+# TTS PLAYBACK — tries every known speaker API across UIFlow1 variants
+# =====================================================================
+def _call_speaker_play(path):
+    try:
+        speaker.setVolume(5)
+    except Exception:
+        pass
+    for name in ("playWAV", "playWav", "playWavFile", "play_wav"):
+        fn = getattr(speaker, name, None)
+        if fn:
+            try:
+                fn(path)
+                return True, None
+            except Exception as exc:
+                return False, name + ": " + str(exc)[:50]
+    return False, "no speaker API found"
+
+
+def play_spoken_text(text, wav_path="/flash/answer.wav"):
+    if not text:
+        return
+    try:
+        r = http_post("/api/v1/speech/tts",
+                      {"device_id": DEVICE_ID, "text": text, "format": "wav"},
+                      raw_response=True)
         if r.status_code != 200:
-            show("Ask failed", "HTTP " + str(r.status_code))
+            err = r.text[:80]
             r.close()
+            show("TTS " + str(r.status_code), err)
+            time.sleep(3)
             return
-        data = r.json().get("data", {})
+        with open(wav_path, "wb") as f:
+            f.write(r.content)
+        r.close()
+        gc.collect()
+    except Exception as exc:
+        show("TTS error", str(exc)[:80])
+        time.sleep(3)
+        return
+
+    ok, err = _call_speaker_play(wav_path)
+    if not ok:
+        show("Speaker error", err or "unknown")
+        time.sleep(3)
+
+
+# =====================================================================
+# ASK (button-triggered)
+# =====================================================================
+def ask_and_speak(question):
+    show("Thinking...", question)
+    gc.collect()
+    try:
+        r = http_post("/api/v1/speech/ask",
+                      {"device_id": DEVICE_ID, "question": question})
+        if r.status_code != 200:
+            err = r.text[:120]
+            r.close()
+            show("ASK " + str(r.status_code), err)
+            time.sleep(4)
+            show_idle()
+            return
+
+        data   = r.json().get("data", {})
         answer = data.get("answer", "")
         intent = data.get("intent", "")
         r.close()
         gc.collect()
 
-        show("Answer (" + intent + ")", answer)
-
-        # 2. TTS as raw WAV bytes  (raw=1 → no base64, no JSON, straight audio)
-        r = urequests.post(
-            BACKEND_URL + "/api/v1/speech/tts?raw=1",
-            json={"device_id": DEVICE_ID, "text": answer, "format": "wav"},
-            headers={"Authorization": "Bearer " + DEVICE_AUTH_TOKEN,
-                     "Content-Type":  "application/json"},
-        )
-        if r.status_code != 200:
-            show("TTS failed", "HTTP " + str(r.status_code))
-            r.close()
-            return
-
-        # 3. Save to flash (stream bytes to avoid large in-memory buffers)
-        with open("/flash/answer.wav", "wb") as f:
-            f.write(r.content)
-        r.close()
-        gc.collect()
-
-        # 4. Play it
-        try:
-            speaker.playWAV("/flash/answer.wav")
-        except Exception as exc:
-            # Fallback name on some firmware variants
-            try:
-                speaker.playWav("/flash/answer.wav")
-            except Exception:
-                show("Playback error", str(exc)[:60])
-                return
+        show("[" + intent + "]", answer)
+        play_spoken_text(answer)
 
     except Exception as exc:
         show("Error", str(exc)[:80])
@@ -144,23 +200,92 @@ def ask_and_play(question):
         time.sleep(1)
         show_idle()
 
-# ---------- BUTTON BINDINGS ----------
-def on_a():
-    ask_and_play(QUESTIONS["A"])
-def on_b():
-    ask_and_play(QUESTIONS["B"])
-def on_c():
-    ask_and_play(QUESTIONS["C"])
 
-btnA.wasPressed(on_a)
-btnB.wasPressed(on_b)
-btnC.wasPressed(on_c)
+# =====================================================================
+# PROACTIVE (motion-triggered)
+# =====================================================================
+def handle_motion():
+    """PIR fired — ask the backend if there's anything worth saying."""
+    global _last_motion_handled
+    now = time.time()
+    if now - _last_motion_handled < MOTION_COOLDOWN_S:
+        return  # throttle at device level too
+    _last_motion_handled = now
 
-# ---------- BOOT ----------
-if ensure_wifi():
-    show_idle()
+    try:
+        r = http_get("/api/v1/speech/proactive?device_id=" + DEVICE_ID)
+        if r.status_code != 200:
+            r.close()
+            return
+        data = r.json().get("data", {})
+        r.close()
+
+        if not data.get("announce"):
+            return  # backend is in cooldown — stay quiet
+
+        trigger = data.get("trigger_id", "")
+        text    = data.get("text", "")
+        show("[" + trigger + "]", text)
+        play_spoken_text(text)
+
+    except Exception:
+        # Silent fail — proactive is a "nice to have", never block the UI
+        pass
+    finally:
+        time.sleep(1)
+        show_idle()
+
+
+def poll_motion():
+    if pir is None:
+        return
+    try:
+        state = pir.state
+    except Exception:
+        try:
+            state = pir.value()
+        except Exception:
+            return
+    if state:
+        handle_motion()
+
+
+# =====================================================================
+# WIFI
+# =====================================================================
+def ensure_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if wlan.isconnected():
+        return True
+    show("Connecting WiFi...", WIFI_SSID)
+    wlan.connect(WIFI_SSID, WIFI_PASS)
+    for _ in range(40):
+        if wlan.isconnected():
+            return True
+        time.sleep(0.5)
+    return False
+
+
+# =====================================================================
+# BUTTON BINDINGS
+# =====================================================================
+btnA.wasPressed(lambda: ask_and_speak(QUESTIONS["A"]))
+btnB.wasPressed(lambda: ask_and_speak(QUESTIONS["B"]))
+btnC.wasPressed(lambda: ask_and_speak(QUESTIONS["C"]))
+
+
+# =====================================================================
+# MAIN LOOP
+# =====================================================================
+if not ensure_wifi():
+    show("WiFi failed", "check SSID / password")
 else:
-    show("Check WiFi creds")
+    show_idle()
 
 while True:
-    time.sleep(1)
+    try:
+        poll_motion()
+    except Exception:
+        pass
+    time.sleep(2)
