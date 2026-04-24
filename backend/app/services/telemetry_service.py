@@ -1,3 +1,18 @@
+# WHOOP for Room — core metric definitions
+#
+# Room Readiness:  how supportive the room is for active use, focus,
+#                  and comfortable presence. (0-100)
+# Recovery Score:  how supportive the room is for calm, rest, and
+#                  recovery-like conditions. (0-100)
+# Air Strain:      how heavy, stale, or environmentally stressed the
+#                  room feels. (0-100)
+# Room State:      human-readable label summarising the room's current
+#                  condition (Fresh / Calm / Dry / Heavy / Social /
+#                  Sleep-Friendly / Restless).
+#
+# These metrics are environmental interpretation metrics — they do not
+# claim to measure human biology directly.
+
 from typing import Dict, Any
 
 from app.services.weather_service import fetch_outdoor_weather

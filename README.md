@@ -1,6 +1,61 @@
-# AmbientClimateCompanion
+# AmbientClimateCompanion — WHOOP for Room
 
-An IoT system that collects indoor climate data from an M5Stack device, enriches it with live outdoor weather, stores it in Google BigQuery, and exposes it through a REST API.
+A room-performance system that continuously senses how supportive a space is for focus, calm, comfort, and recovery.
+
+We treat the room like a living environment with performance states. Rather than displaying raw sensor values, the system derives four human-readable metrics that describe how the room *feels* right now.
+
+> These metrics do not claim to measure human biology directly. They are environmental interpretation metrics based on indoor climate, air quality, occupancy, and weather context, designed to describe how supportive the space may feel for comfort, focus, calm, and recovery.
+
+---
+
+## Core Metrics
+
+### 1. Room Readiness
+Measures how supportive the room is for being present, focused, comfortable, and productive right now.
+
+*"How ready is the room for work, study, or normal daytime use?"*
+
+**Factors:** indoor temperature, humidity, TVOC/eCO2, recent occupancy strain  
+**High** → room feels supportive and usable · **Low** → space feels less supportive or mildly stressful
+
+---
+
+### 2. Recovery Score
+Measures how supportive the room is for calm, rest, decompression, and recovery-like conditions.
+
+*"How good is this room for calming down, resting, or recovery?"*
+
+**Factors:** milder temperature (18–22 C), non-dry humidity, lower TVOC, low recent strain  
+**High** → restful and recovery-friendly · **Low** → room feels less restorative
+
+---
+
+### 3. Air Strain
+Measures how stressed or burdened the room feels due to poor air conditions and environmental buildup.
+
+*"How heavy or strained does the air feel right now?"*
+
+**Factors:** TVOC, eCO2, heat combined with poor air, recent occupancy/motion  
+**Low** → fresh / easy air · **High** → heavy, stale, strained environment
+
+---
+
+### 4. Room State
+The room's current human-readable identity — a short label that summarises how the room feels at a glance.
+
+*"What kind of room am I in right now?"*
+
+| Label | Meaning |
+|-------|---------|
+| `Fresh` | Air feels light, usable, and supportive |
+| `Calm` | Room feels stable, balanced, and quiet |
+| `Dry` | Humidity is too low, comfort is reduced |
+| `Heavy` | Air feels stale, burdened, or environmentally strained |
+| `Social` | Recent motion/presence — room is active and in use |
+| `Sleep-Friendly` | Room feels more suitable for evening calm or rest |
+| `Restless` | Conditions are unbalanced but not yet Heavy |
+
+---
 
 ---
 
@@ -50,8 +105,8 @@ An IoT system that collects indoor climate data from an M5Stack device, enriches
 └────────────────────────────────────────┘
 ```
 
-- **Source badge** (header): `LIVE` / `CLOUD` / `CACHED` / `OFFLINE` / `SEND FAIL` / `WX STALE` — color-coded by severity
-- **Status strip** (hero row, right side): priority-ordered contextual message — `Offline` › `Sync failed` › `Poor air` › `Dry air` › `Cloud sync` (15 s) › `Motion!` (8 s cooldown) › `WX updated` (30 s) › `Fresh air`
+- **Source badge** (header): `LIVE` / `CLOUD` / `CACHED` / `OFFLINE` / `SEND FAIL` / `WX OLD` — color-coded by severity
+- **Status strip** (hero row, right side): priority-ordered room-state message — `Offline` › `Sync failed` › `Air strain` › `Dry air` › `Restless` › `Room synced` (15 s) › `Motion` (8 s) › `Weather fresh` (30 s) › `Fresh` / `Calm` / `Sleep-Friendly` / `Social`
 
 **Alerts (sent as events to backend)**
 

@@ -404,7 +404,17 @@ def fetch_forecast():
     except: pass
 
 # -------------------------------------------------------
-# Room performance metrics  (scoring logic expanded in Day 2+)
+# Room performance metrics
+#
+# Room Readiness:  how supportive the room is for active use, focus,
+#                  and comfortable presence. (0-100)
+# Recovery Score:  how supportive the room is for calm, rest, and
+#                  recovery-like conditions. (0-100)
+# Air Strain:      how heavy, stale, or environmentally stressed the
+#                  room feels. (0-100)
+# Room State:      human-readable label summarising the room's current
+#                  condition (Fresh / Calm / Dry / Heavy / Social /
+#                  Sleep-Friendly / Restless).
 # -------------------------------------------------------
 def compute_room_metrics():
     global room_readiness, recovery_score, air_strain, room_state
