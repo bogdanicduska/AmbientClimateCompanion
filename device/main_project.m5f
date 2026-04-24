@@ -771,6 +771,7 @@ try:
         cache_norm  = (last_cache_ts or "")[:19]
         if cloud_norm >= cache_norm:
             update_all()
+            save_last_state()
     else:
         cloud_sync_state = "failed"
         if last_cache_ts:
@@ -781,6 +782,7 @@ except: pass
 # 5. Weather — fetch and update hero outdoor info
 fetch_outdoor_weather()
 update_hero()
+save_last_state()
 
 # -------------------------------------------------------
 # Main loop
