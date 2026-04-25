@@ -496,92 +496,55 @@ def aq_status(tvoc_val):
 #  │                         ROOM RHYTHM     │
 #  └─────────────────────────────────────────┘
 
-BG = 0x0D0D0D
+BG           = 0x080C10
+CARD_BLUE    = 0x0E2840   # readiness hero
+CARD_TEAL    = 0x0A2220   # recovery hero
+CARD_STRAIN  = 0x1C1028   # strain tile
+CARD_CLIM    = 0x0D1A22   # climate tile
+CARD_AQ      = 0x0C1C12   # AQ tile
 
 def draw_frame():
     lcd.clear(BG)
-    # Header divider
-    lcd.line(0,  23, 320,  23, 0x2A2A2A)
-    # Hero vertical split (Readiness | Recovery)
-    lcd.line(200, 23, 200, 108, 0x222222)
-    # Hero / tile divider
-    lcd.line(0, 108, 320, 108, 0x2A2A2A)
-    # Tile column dividers
-    lcd.line(80,  109, 80,  177, 0x222222)
-    lcd.line(200, 109, 200, 177, 0x222222)
-    # Tile / insight divider
-    lcd.line(0, 178, 320, 178, 0x2A2A2A)
-    # Static section micro-labels
+    # Hero cards (1px BG gap acts as divider)
+    lcd.rect(0,   23, 200,  85, CARD_BLUE,   CARD_BLUE)
+    lcd.rect(201, 23, 119,  85, CARD_TEAL,   CARD_TEAL)
+    # Tile cards  (strain 120px, climate 79px, AQ 119px)
+    lcd.rect(0,   109, 120, 69, CARD_STRAIN, CARD_STRAIN)
+    lcd.rect(121, 109,  79, 69, CARD_CLIM,   CARD_CLIM)
+    lcd.rect(201, 109, 119, 69, CARD_AQ,     CARD_AQ)
+    # Static section labels
     lcd.font(lcd.FONT_DejaVu18)
-    lcd.print("READINESS", 10,  26, 0x333333)
-    lcd.print("RECOVERY",  205, 26, 0x333333)
-    lcd.print("STRAIN",    8,  110, 0x444444)
-    # Product identity watermark
-    lcd.print("ROOM RHYTHM", 175, 224, 0x222222)
+    lcd.print("READINESS", 8,  26, 0x1E4A7A)
+    lcd.print("STRAIN",    5, 111, 0x4A3070)
+    # Watermark
+    lcd.print("ROOM RHYTHM", 175, 224, 0x1A1A1A)
 
-# Labels created in init_labels() after draw_frame()
+# Header labels (M5TextBox — sit on BG, safe to update)
 lbl_dot = lbl_date = lbl_time = lbl_source = None
-lbl_readiness = lbl_recovery = lbl_recovery_level = lbl_out_info = None
-lbl_strain_score = lbl_strain_level = None
-lbl_temp = lbl_hum = lbl_press = None
-lbl_tvoc = lbl_eco2 = lbl_rhythm = None
-lbl_insight = None
 
 def init_labels():
     global lbl_dot, lbl_date, lbl_time, lbl_source
-    global lbl_readiness, lbl_recovery, lbl_recovery_level, lbl_out_info
-    global lbl_strain_score, lbl_strain_level
-    global lbl_temp, lbl_hum, lbl_press
-    global lbl_tvoc, lbl_eco2, lbl_rhythm
-    global lbl_insight
-
-    # Header
     lbl_dot    = M5TextBox(6,   5, "*",          lcd.FONT_DejaVu18, 0x00FF66)
     lbl_date   = M5TextBox(22,  5, "--- -- ---", lcd.FONT_DejaVu18, 0x888888)
-    lbl_source = M5TextBox(258, 5, "LIVE",        lcd.FONT_DejaVu18, 0x00FF66)
-    lbl_time   = M5TextBox(170, 5, "--:--",      lcd.FONT_DejaVu18, 0xFFFF00)
-
-    # Hero left — Room Readiness (big score)
-    lbl_readiness = M5TextBox(10, 44, "--", lcd.FONT_DejaVu40, 0xFFFFFF)
-
-    # Hero right — Recovery Score + level + outdoor info
-    lbl_recovery       = M5TextBox(205, 46, "--",   lcd.FONT_DejaVu18, 0x66CCFF)
-    lbl_recovery_level = M5TextBox(205, 68, "---",  lcd.FONT_DejaVu18, 0x4488BB)
-    lbl_out_info       = M5TextBox(205, 88, "---",  lcd.FONT_DejaVu18, 0x444444)
-
-    # Tiles — col 1: Air Strain (x=0..79)
-    lbl_strain_score = M5TextBox(8, 128, "--",    lcd.FONT_DejaVu18, 0xFFFFFF)
-    lbl_strain_level = M5TextBox(8, 150, "---",   lcd.FONT_DejaVu18, 0x00CC55)
-
-    # Tiles — col 2: Climate (x=80..199)
-    lbl_temp  = M5TextBox(88, 114, "--.- C",   lcd.FONT_DejaVu18, 0x00FFCC)
-    lbl_hum   = M5TextBox(88, 134, "-- %",     lcd.FONT_DejaVu18, 0x66CCFF)
-    lbl_press = M5TextBox(88, 154, "---- hPa", lcd.FONT_DejaVu18, 0x888888)
-
-    # Tiles — col 3: AQ + Rhythm (x=200..319)
-    lbl_tvoc   = M5TextBox(206, 114, "TVOC ---", lcd.FONT_DejaVu18, 0xCCCCCC)
-    lbl_eco2   = M5TextBox(206, 134, "CO2  ---", lcd.FONT_DejaVu18, 0xFFCC99)
-    lbl_rhythm = M5TextBox(206, 154, "---",      lcd.FONT_DejaVu18, 0x888888)
-
-    # Insight strip
-    lbl_insight = M5TextBox(10, 190, "", lcd.FONT_DejaVu18, 0x666666)
+    lbl_source = M5TextBox(222, 5, "LIVE",        lcd.FONT_DejaVu18, 0x00FF66)
+    lbl_time   = M5TextBox(148, 5, "--:--",      lcd.FONT_DejaVu18, 0xFFFF00)
 
 # -------------------------------------------------------
 # UI helpers
 # -------------------------------------------------------
 def source_badge_text_and_color():
     if network_state == "offline":
-        return "OFFLINE",   0xFF4444
+        return "OFFLN",   0xFF4444
     if telemetry_state == "failed":
-        return "SEND FAIL", 0xFF8800
+        return "TX ERR",  0xFF8800
     if weather_state in ("stale", "failed"):
         if data_source == "live":
-            return "LIVE/WX", 0xFFCC00
-        return "WX OLD",    0xFFCC00
+            return "WX STL", 0xFFCC00
+        return "WX OLD",  0xFFCC00
     if data_source == "cloud":
         return "CLOUD",     0xFFCC00
     if data_source == "cache":
-        return "CACHED",    0x888888
+        return "CACHE",     0x888888
     return "LIVE", 0x00FF66
 
 def room_state_color():
@@ -650,7 +613,36 @@ def get_room_insight():
     return "Monitoring room conditions.", 0x444444
 
 # -------------------------------------------------------
-# Update functions — setText/setColor only, no lcd.clear
+# Weather icon — drawn with lcd primitives at (x, y), 30x30px
+# -------------------------------------------------------
+def draw_weather_icon(x, y):
+    desc = (outdoor_desc or "").lower()
+    lcd.rect(x, y, 30, 30, CARD_TEAL, CARD_TEAL)
+    if "rain" in desc or "drizzle" in desc or "shower" in desc:
+        lcd.circle(x+8,  y+11, 6, 0x8899BB, 0x8899BB)
+        lcd.circle(x+15, y+7,  8, 0xAABBDD, 0xAABBDD)
+        lcd.circle(x+22, y+11, 6, 0x8899BB, 0x8899BB)
+        lcd.rect(x+4, y+13, 22, 6, 0x99AACC, 0x99AACC)
+        lcd.rect(x+6,  y+22, 2, 6, 0x4488FF, 0x4488FF)
+        lcd.rect(x+14, y+22, 2, 6, 0x4488FF, 0x4488FF)
+        lcd.rect(x+22, y+22, 2, 6, 0x4488FF, 0x4488FF)
+    elif "cloud" in desc or "overcast" in desc:
+        lcd.circle(x+7,  y+14, 7, 0x777777, 0x777777)
+        lcd.circle(x+15, y+10, 9, 0xCCCCCC, 0xCCCCCC)
+        lcd.circle(x+23, y+14, 7, 0x777777, 0x777777)
+        lcd.rect(x+3, y+16, 24, 7, 0xAAAAAA, 0xAAAAAA)
+    elif "snow" in desc:
+        lcd.circle(x+15, y+15, 10, 0xDDEEFF, 0xDDEEFF)
+        lcd.circle(x+15, y+15,  6, 0xEEFFFF, 0xEEFFFF)
+    else:
+        lcd.circle(x+15, y+15, 10, 0xFFDD33, 0xFFDD33)
+        lcd.rect(x+14, y+2,  2, 4, 0xFFCC00, 0xFFCC00)
+        lcd.rect(x+14, y+24, 2, 4, 0xFFCC00, 0xFFCC00)
+        lcd.rect(x+2,  y+14, 4, 2, 0xFFCC00, 0xFFCC00)
+        lcd.rect(x+24, y+14, 4, 2, 0xFFCC00, 0xFFCC00)
+
+# -------------------------------------------------------
+# Update functions — lcd.rect clear + lcd.print, no M5TextBox
 # -------------------------------------------------------
 def update_header():
     wlan = network.WLAN(network.STA_IF)
@@ -662,57 +654,74 @@ def update_header():
     lbl_source.setColor(color)
 
 def update_hero():
-    # Readiness big score + color
-    score_r = room_readiness if room_readiness is not None else 0
-    lbl_readiness.setText(str(score_r) if room_readiness is not None else "--")
-    lbl_readiness.setColor(readiness_color(room_readiness))
-
-    # State chip drawn with lcd (dynamic width + color)
-    chip_label = room_state if room_state != "---" else "---"
-    chip_w = max(len(chip_label) * 13 + 10, 50)
-    chip_c = room_state_color()
-    lcd.rect(75, 52, chip_w, 20, chip_c, chip_c)
     lcd.font(lcd.FONT_DejaVu18)
-    tx = 75 + (chip_w - len(chip_label) * 13) // 2
-    if tx < 77: tx = 77
-    lcd.print(chip_label.upper(), tx, 54, 0xFFFFFF)
 
-    # Recovery score + level + outdoor
+    # --- Readiness card (x=0..199, y=23..107) ---
+    score_r = room_readiness if room_readiness is not None else 0
+    r_color = readiness_color(room_readiness)
+    # Clear score area (from y=48 to avoid clipping "READINESS" label at y=26..44)
+    lcd.rect(4, 48, 192, 40, CARD_BLUE, CARD_BLUE)
+    # Redraw static label (in case border was touched)
+    lcd.font(lcd.FONT_DejaVu18)
+    lcd.print("READINESS", 8, 26, 0x1E4A7A)
+    lcd.font(lcd.FONT_DejaVu40)
+    lcd.print(str(score_r) if room_readiness is not None else "--", 8, 48, r_color)
+    # State chip — below score
+    chip_label = room_state if room_state else "---"
+    chip_w = max(min(len(chip_label) * 13 + 10, 188), 40)
+    chip_c = room_state_color()
+    lcd.rect(4, 90, 192, 18, CARD_BLUE, CARD_BLUE)
+    lcd.rect(6, 90, chip_w, 16, chip_c, chip_c)
+    lcd.font(lcd.FONT_DejaVu18)
+    tx = 6 + max((chip_w - len(chip_label) * 13) // 2, 2)
+    lcd.print(chip_label.upper(), tx, 91, 0xFFFFFF)
+
+    # --- Recovery card (x=201..319, y=23..107) ---
     score_v = recovery_score if recovery_score is not None else 0
-    lbl_recovery.setText(str(score_v) if recovery_score is not None else "--")
     level_text, level_color = recovery_level_label(recovery_score)
-    lbl_recovery_level.setText(level_text)
-    lbl_recovery_level.setColor(level_color)
-    if outdoor_temp is not None:
-        lbl_out_info.setText("Out: " + str(outdoor_temp) + " C")
-    else:
-        lbl_out_info.setText("Out: --")
+    lcd.rect(203, 44, 112, 22, CARD_TEAL, CARD_TEAL)
+    lcd.font(lcd.FONT_DejaVu18)
+    lcd.print("RECOVERY", 205, 26, 0x1A5048)
+    lcd.print(str(score_v) if recovery_score is not None else "--", 205, 46, 0x66CCFF)
+    lcd.rect(203, 66, 112, 22, CARD_TEAL, CARD_TEAL)
+    lcd.print(level_text, 205, 68, level_color)
+    lcd.rect(203, 86, 72, 20, CARD_TEAL, CARD_TEAL)
+    out_text = (str(outdoor_temp) + " C") if outdoor_temp is not None else "--"
+    lcd.print(out_text, 205, 88, 0x558888)
+    draw_weather_icon(284, 62)
 
 def update_tiles():
-    # Air Strain
-    score_s = air_strain if air_strain is not None else 0
-    lbl_strain_score.setText(str(score_s) if air_strain is not None else "--")
-    lbl_strain_score.setColor(strain_color(air_strain))
+    lcd.font(lcd.FONT_DejaVu18)
+
+    # --- Strain card (x=0..119, y=109..177) — 120px wide ---
+    lcd.rect(0, 130, 118, 22, CARD_STRAIN, CARD_STRAIN)
+    lcd.print(str(air_strain) if air_strain is not None else "--", 5, 132, strain_color(air_strain))
     level_text, level_color = strain_level_label(air_strain)
-    lbl_strain_level.setText(level_text)
-    lbl_strain_level.setColor(level_color)
+    lcd.rect(0, 154, 118, 22, CARD_STRAIN, CARD_STRAIN)
+    lcd.print(level_text, 5, 156, level_color)
 
-    # Climate
-    lbl_temp.setText((str(last_temp) + " C") if last_temp is not None else "--.- C")
-    lbl_hum.setText((str(int(last_humidity)) + " %") if last_humidity is not None else "-- %")
-    lbl_press.setText(last_pressure_text + " hPa")
+    # --- Climate card (x=121..199, y=109..177) ---
+    lcd.rect(122, 109, 76, 22, CARD_CLIM, CARD_CLIM)
+    lcd.print((str(last_temp) + " C") if last_temp is not None else "-- C", 126, 111, 0x00FFCC)
+    lcd.rect(122, 132, 76, 22, CARD_CLIM, CARD_CLIM)
+    lcd.print((str(int(last_humidity)) + " %") if last_humidity is not None else "-- %", 126, 134, 0x66CCFF)
+    lcd.rect(122, 154, 76, 22, CARD_CLIM, CARD_CLIM)
+    lcd.print(last_pressure_text + " hPa", 126, 156, 0x667788)
 
-    # AQ + Rhythm
-    lbl_tvoc.setText("TVOC " + (str(int(last_tvoc)) if last_tvoc is not None else "---"))
-    lbl_eco2.setText("CO2  " + (str(int(last_eco2)) if last_eco2 is not None else "---"))
+    # --- AQ card (x=201..319, y=109..177) ---
+    lcd.rect(202, 109, 116, 22, CARD_AQ, CARD_AQ)
+    lcd.print("TVOC " + (str(int(last_tvoc)) if last_tvoc is not None else "---"), 206, 111, 0xCCCCCC)
+    lcd.rect(202, 132, 116, 22, CARD_AQ, CARD_AQ)
+    lcd.print("CO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"), 206, 134, 0xFFCC99)
     r_text, r_color = rhythm_label()
-    lbl_rhythm.setText(r_text)
-    lbl_rhythm.setColor(r_color)
+    lcd.rect(202, 154, 116, 22, CARD_AQ, CARD_AQ)
+    lcd.print(r_text, 206, 156, r_color)
 
 def update_insight():
     text, color = get_room_insight()
-    lbl_insight.setText(text)
-    lbl_insight.setColor(color)
+    lcd.rect(0, 180, 320, 42, BG, BG)
+    lcd.font(lcd.FONT_DejaVu18)
+    lcd.print(text, 10, 186, color)
 
 def update_all():
     try: update_header()
