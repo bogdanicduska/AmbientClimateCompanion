@@ -1,4 +1,7 @@
+import audioop
 import base64
+import io
+import wave
 from typing import Dict, Any, Optional
 
 from openai import OpenAI
@@ -47,6 +50,41 @@ def resolve_text(text: Optional[str], template: Optional[str]) -> str:
 
 
 SUPPORTED_TTS_FORMATS = {"mp3", "wav", "opus", "aac", "flac", "pcm"}
+
+# M5Stack Core2 UIFlow `speaker.playWAV` reliably decodes only 8-bit unsigned mono PCM
+# at common sample rates. 16 kHz is the sweet spot — intelligible speech, small files.
+M5STACK_RATE     = 16000
+M5STACK_BITS     = 8
+M5STACK_CHANNELS = 1
+
+
+def convert_wav_for_m5stack(wav_bytes: bytes) -> bytes:
+    """Re-encode a WAV (any rate / bit depth / channel count from OpenAI TTS) into
+    the 16 kHz / 8-bit unsigned / mono RIFF/WAVE that M5Stack speaker.playWAV expects."""
+    with wave.open(io.BytesIO(wav_bytes), "rb") as src:
+        src_rate     = src.getframerate()
+        src_channels = src.getnchannels()
+        src_width    = src.getsampwidth()
+        frames       = src.readframes(src.getnframes())
+
+    if src_channels == 2:
+        frames = audioop.tomono(frames, src_width, 0.5, 0.5)
+
+    if src_rate != M5STACK_RATE:
+        frames, _ = audioop.ratecv(frames, src_width, 1, src_rate, M5STACK_RATE, None)
+
+    if src_width != 1:
+        frames = audioop.lin2lin(frames, src_width, 1)  # → 8-bit signed
+
+    frames = audioop.bias(frames, 1, 128)               # → 8-bit unsigned
+
+    out = io.BytesIO()
+    with wave.open(out, "wb") as dst:
+        dst.setnchannels(M5STACK_CHANNELS)
+        dst.setsampwidth(M5STACK_BITS // 8)
+        dst.setframerate(M5STACK_RATE)
+        dst.writeframes(frames)
+    return out.getvalue()
 
 
 def synthesize_speech(text: str, config, audio_format: str = "mp3") -> Dict[str, Any]:

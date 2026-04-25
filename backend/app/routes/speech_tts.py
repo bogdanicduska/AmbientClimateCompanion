@@ -1,6 +1,15 @@
 from flask import Blueprint, Response, jsonify, request, current_app
 
-from app.services.tts_service import synthesize_speech, resolve_text, TEMPLATES, SUPPORTED_TTS_FORMATS
+from app.services.tts_service import (
+    synthesize_speech,
+    resolve_text,
+    convert_wav_for_m5stack,
+    TEMPLATES,
+    SUPPORTED_TTS_FORMATS,
+    M5STACK_RATE,
+    M5STACK_BITS,
+    M5STACK_CHANNELS,
+)
 from app.services.auth_service import is_valid_device_token
 from app.utils.validators import validate_tts_payload
 from app.utils.logger import get_logger
@@ -16,6 +25,15 @@ _MIME_MAP = {
     "aac":  "audio/aac",
     "flac": "audio/flac",
     "pcm":  "application/octet-stream",
+}
+
+# OpenAI TTS raw `pcm` is fixed at 24 kHz, 16-bit signed LE, mono — surface those
+# numbers as headers so embedded clients (M5Stack I2S) don't have to hard-code them.
+_PCM_FORMAT_HEADERS = {
+    "X-Sample-Rate": "24000",
+    "X-Bit-Depth":   "16",
+    "X-Channels":    "1",
+    "X-Encoding":    "pcm_s16le",
 }
 
 
@@ -42,8 +60,14 @@ def tts():
 
     # ?raw=1 → return raw audio bytes (useful for embedded clients like M5Stack)
     raw = request.args.get("raw", "0") in ("1", "true", "yes")
+    # ?profile=m5stack → re-encode WAV to 16 kHz / 8-bit unsigned mono (only fmt the
+    # M5Stack Core2 UIFlow firmware's speaker.playWAV decodes reliably).
+    profile = request.args.get("profile", "").lower()
 
-    logger.info(f"TTS — device={payload['device_id']} fmt={audio_format} raw={raw} text={spoken_text!r}")
+    if profile == "m5stack" and audio_format != "wav":
+        return jsonify({"success": False, "message": "profile=m5stack requires format=wav"}), 400
+
+    logger.info(f"TTS — device={payload['device_id']} fmt={audio_format} raw={raw} profile={profile or '-'} text={spoken_text!r}")
 
     try:
         result = synthesize_speech(spoken_text, current_app.config, audio_format=audio_format)
@@ -54,11 +78,25 @@ def tts():
         return jsonify({"success": False, "message": "Internal server error"}), 500
 
     if raw:
+        audio_bytes = result["audio_bytes"]
+        headers = {"X-Spoken-Text": spoken_text[:200]}
+
+        if profile == "m5stack":
+            audio_bytes = convert_wav_for_m5stack(audio_bytes)
+            headers.update({
+                "X-Sample-Rate": str(M5STACK_RATE),
+                "X-Bit-Depth":   str(M5STACK_BITS),
+                "X-Channels":    str(M5STACK_CHANNELS),
+                "X-Encoding":    "pcm_u8",
+            })
+        elif audio_format == "pcm":
+            headers.update(_PCM_FORMAT_HEADERS)
+
         return Response(
-            result["audio_bytes"],
+            audio_bytes,
             status=200,
             mimetype=_MIME_MAP.get(audio_format, "application/octet-stream"),
-            headers={"X-Spoken-Text": spoken_text[:200]},
+            headers=headers,
         )
 
     # JSON response — strip the raw bytes (only base64 is JSON-serializable)

@@ -19,13 +19,25 @@
 #   announcement once per hour, air strain alerts every 2h, etc).
 # -------------------------------------------------------------------
 
-from m5stack import lcd, btnA, btnB, btnC, speaker
+from m5stack import lcd, btnA, btnB, btnC
 import unit
 import network
 import urequests
 import ujson
 import time
 import gc
+
+# Speaker module — UIFlow1 exposes `speaker` from m5stack; UIFlow2 uses M5.Speaker
+try:
+    from m5stack import speaker as _spk
+    SPEAKER_KIND = "uiflow1"
+except ImportError:
+    try:
+        from M5 import Speaker as _spk
+        SPEAKER_KIND = "uiflow2"
+    except ImportError:
+        _spk = None
+        SPEAKER_KIND = "none"
 
 # =====================================================================
 # CONFIG — edit these 5 values for your setup
@@ -121,22 +133,55 @@ def http_get(path):
 
 
 # =====================================================================
-# TTS PLAYBACK — tries every known speaker API across UIFlow1 variants
+# SPEAKER — robust across UIFlow1 / UIFlow2 variants
 # =====================================================================
+def _set_volume(level=6):
+    if _spk is None:
+        return
+    for name in ("setVolume", "set_volume", "setVol"):
+        fn = getattr(_spk, name, None)
+        if fn:
+            try:
+                fn(level)
+                return
+            except Exception:
+                pass
+
+
+def _beep(freq=1000, ms=250):
+    """Short diagnostic beep. If you hear it, the speaker chain is alive."""
+    if _spk is None:
+        return
+    for name in ("tone", "playTone", "beep", "sing"):
+        fn = getattr(_spk, name, None)
+        if fn:
+            try:
+                fn(freq, ms)
+                return
+            except Exception:
+                pass
+
+
+def _speaker_attrs():
+    """List available methods on the speaker module — shown on screen when play fails."""
+    if _spk is None:
+        return "no module"
+    return ", ".join([a for a in dir(_spk) if not a.startswith("_")][:10])
+
+
 def _call_speaker_play(path):
-    try:
-        speaker.setVolume(5)
-    except Exception:
-        pass
-    for name in ("playWAV", "playWav", "playWavFile", "play_wav"):
-        fn = getattr(speaker, name, None)
+    if _spk is None:
+        return False, None, "no speaker module"
+    _set_volume(6)
+    for name in ("playWAV", "playWav", "playWavFile", "play_wav", "playFile"):
+        fn = getattr(_spk, name, None)
         if fn:
             try:
                 fn(path)
-                return True, None
+                return True, name, None
             except Exception as exc:
-                return False, name + ": " + str(exc)[:50]
-    return False, "no speaker API found"
+                return False, name, str(exc)[:60]
+    return False, None, "no play API. attrs: " + _speaker_attrs()
 
 
 def play_spoken_text(text, wav_path="/flash/answer.wav"):
@@ -152,19 +197,28 @@ def play_spoken_text(text, wav_path="/flash/answer.wav"):
             show("TTS " + str(r.status_code), err)
             time.sleep(3)
             return
-        with open(wav_path, "wb") as f:
-            f.write(r.content)
+        wav_bytes = r.content
         r.close()
+        with open(wav_path, "wb") as f:
+            f.write(wav_bytes)
         gc.collect()
+        wav_size = len(wav_bytes)
     except Exception as exc:
         show("TTS error", str(exc)[:80])
         time.sleep(3)
         return
 
-    ok, err = _call_speaker_play(wav_path)
-    if not ok:
-        show("Speaker error", err or "unknown")
-        time.sleep(3)
+    # Pre-beep — if you hear this but not the speech, the WAV format is incompatible.
+    _beep(800, 150)
+    time.sleep(0.1)
+
+    ok, api_used, err = _call_speaker_play(wav_path)
+    if ok:
+        show("Speaking [" + (api_used or "?") + "]",
+             "WAV " + str(wav_size) + " B, kind=" + SPEAKER_KIND)
+    else:
+        show("Speaker FAIL", (err or "unknown") + " | kind=" + SPEAKER_KIND)
+        time.sleep(5)
 
 
 # =====================================================================
