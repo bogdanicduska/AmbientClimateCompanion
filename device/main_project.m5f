@@ -567,7 +567,6 @@ def draw_frame():
     lcd.font(lcd.FONT_DejaVu18)
     lcd.print("READINESS", 8,  26, 0x1E4A7A)
     lcd.print("STRAIN",    5, 111, 0x4A3070)
-    lcd.print("hPa",      162, 157, 0x334455)
     # Watermark
     lcd.print("ROOM RHYTHM", 175, 224, 0x1A1A1A)
 
@@ -601,12 +600,12 @@ def source_badge_text_and_color():
 
 def room_state_color():
     colors = {
-        "Fresh":         0x006633,
-        "Calm":          0x224466,
-        "Dry":           0x885500,
+        "Fresh":         0x0A5C2A,
+        "Calm":          0x1E3D5C,
+        "Dry":           0x7A5A00,
         "Heavy":         0xAA2200,
-        "Social":        0x555500,
-        "Sleep-Friendly":0x223355,
+        "Social":        0x6B6600,
+        "Sleep-Friendly":0x1A304A,
         "Restless":      0x884400,
     }
     return colors.get(room_state, 0x333333)
@@ -619,7 +618,7 @@ def readiness_color(score):
 
 def recovery_level_label(score):
     if score is None:  return "---",    0x555555
-    if score >= 75:    return "Good",   0x00CC55
+    if score >= 75:    return "Good",   0x00BBCC
     if score >= 50:    return "Fair",   0xFFCC00
     return "Low",   0xFF7700
 
@@ -647,7 +646,7 @@ def get_status_message():
     now = utime.time()
     # 1. Offline
     if network_state == "offline":
-        return "Offline. Showing cached data.", 0xFF4444
+        return "Offline. Showing last known values.", 0xFF4444
     # 2. Sync failed
     if telemetry_state == "failed":
         return "Sync failed. Data may be stale.", 0xFF7700
@@ -656,12 +655,12 @@ def get_status_message():
         return "Weather data outdated.", 0xFFAA00
     # 4. Air strain rising
     if air_strain is not None and air_strain >= 60:
-        return "Air strain high. Ventilate.", 0xFF5500
+        return "Air heavy. Consider ventilation.", 0xFF5500
     if air_strain is not None and air_strain >= 35:
         return "Air strain rising.", 0xFFAA00
     # 5. Dry conditions
     if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
-        return "Dry air detected. Humidity low.", 0xFF8800
+        return "Dry air detected.", 0xFF8800
     # 6. Just recovered from cloud (within 2 min of boot sync)
     if cloud_sync_state == "ok" and (now - last_cloud_sync_time) < 120:
         return "Recovered from cloud.", 0x00CCFF
@@ -678,13 +677,13 @@ def get_status_message():
         return "Readiness high.", 0x00CC55
     # 10. Fresh state
     if room_state == "Fresh":
-        return "Fresh room state.", 0x00CC55
+        return "Room is fresh and ready.", 0x00CC55
     if room_state == "Calm":
-        return "Calm. Recovery conditions good.", 0x4488BB
+        return "Calm conditions for focus.", 0x4488BB
     if room_state == "Sleep-Friendly":
-        return "Sleep-friendly. Rest well.", 0x5599BB
+        return "Recovery-friendly evening room.", 0x5599BB
     if room_state == "Social":
-        return "Room active. Strain may rise.", 0xCCCC00
+        return "Room active. Air strain may rise.", 0xCCCC00
     if room_state == "Restless":
         return "Room conditions unbalanced.", 0xFFAA00
     return "Monitoring room conditions.", 0x444444
@@ -730,20 +729,14 @@ def update_header():
     lbl_source.setText(text)
     lbl_source.setColor(color)
 
-def update_hero():
-    lcd.font(lcd.FONT_DejaVu18)
-
-    # --- Readiness card (x=0..199, y=23..107) ---
+def update_readiness_card():
     score_r = room_readiness if room_readiness is not None else 0
     r_color = readiness_color(room_readiness)
-    # Clear score area (from y=48 to avoid clipping "READINESS" label at y=26..44)
     lcd.rect(4, 48, 192, 40, CARD_BLUE, CARD_BLUE)
-    # Redraw static label (in case border was touched)
     lcd.font(lcd.FONT_DejaVu18)
     lcd.print("READINESS", 8, 26, 0x1E4A7A)
     lcd.font(lcd.FONT_DejaVu40)
     lcd.print(str(score_r) if room_readiness is not None else "--", 8, 48, r_color)
-    # State chip — below score
     chip_label = room_state if room_state else "---"
     chip_w = max(min(len(chip_label) * 13 + 10, 188), 40)
     chip_c = room_state_color()
@@ -753,7 +746,7 @@ def update_hero():
     tx = 6 + max((chip_w - len(chip_label) * 13) // 2, 2)
     lcd.print(chip_label.upper(), tx, 91, 0xFFFFFF)
 
-    # --- Recovery card (x=201..319, y=23..107) ---
+def update_recovery_card():
     score_v = recovery_score if recovery_score is not None else 0
     level_text, level_color = recovery_level_label(recovery_score)
     lcd.rect(203, 44, 112, 22, CARD_TEAL, CARD_TEAL)
@@ -767,25 +760,25 @@ def update_hero():
     lcd.print(out_text, 205, 88, 0x558888)
     draw_weather_icon(284, 62)
 
-def update_tiles():
+def update_strain_tile():
     lcd.font(lcd.FONT_DejaVu18)
-
-    # --- Strain card (x=0..119, y=109..177) — 120px wide ---
     lcd.rect(0, 130, 118, 22, CARD_STRAIN, CARD_STRAIN)
     lcd.print(str(air_strain) if air_strain is not None else "--", 5, 132, strain_color(air_strain))
     level_text, level_color = strain_level_label(air_strain)
     lcd.rect(0, 154, 118, 22, CARD_STRAIN, CARD_STRAIN)
     lcd.print(level_text, 5, 156, level_color)
 
-    # --- Climate card (x=121..199, y=109..177) ---
+def update_climate_tile():
+    lcd.font(lcd.FONT_DejaVu18)
     lcd.rect(122, 109, 76, 22, CARD_CLIM, CARD_CLIM)
     lcd.print((str(last_temp) + " C") if last_temp is not None else "-- C", 126, 111, 0x00FFCC)
     lcd.rect(122, 132, 76, 22, CARD_CLIM, CARD_CLIM)
     lcd.print((str(int(last_humidity)) + " %") if last_humidity is not None else "-- %", 126, 134, 0x66CCFF)
     lcd.rect(122, 154, 76, 22, CARD_CLIM, CARD_CLIM)
-    lcd.print(last_pressure_text, 126, 156, 0x667788)
+    lcd.print(last_pressure_text + " h", 126, 156, 0x667788)
 
-    # --- AQ card (x=201..319, y=109..177) ---
+def update_air_tile():
+    lcd.font(lcd.FONT_DejaVu18)
     aq_label, aq_color = aq_status(last_tvoc)
     aq_ppb = (" " + str(int(last_tvoc))) if last_tvoc is not None else ""
     lcd.rect(202, 109, 116, 22, CARD_AQ, CARD_AQ)
@@ -805,9 +798,15 @@ def update_status_line():
 def update_all():
     try: update_header()
     except: pass
-    try: update_hero()
+    try: update_readiness_card()
     except: pass
-    try: update_tiles()
+    try: update_recovery_card()
+    except: pass
+    try: update_strain_tile()
+    except: pass
+    try: update_climate_tile()
+    except: pass
+    try: update_air_tile()
     except: pass
     try: update_status_line()
     except: pass
@@ -846,8 +845,11 @@ try:
     lbl_time.setText(fmt_time())
     lbl_date.setText(fmt_date())
     compute_room_metrics()
-    update_hero()
-    update_tiles()
+    update_readiness_card()
+    update_recovery_card()
+    update_strain_tile()
+    update_climate_tile()
+    update_air_tile()
     update_status_line()
     save_last_state()
 except: pass
@@ -875,7 +877,7 @@ except: pass
 
 # 5. Weather — fetch and update hero outdoor info
 fetch_outdoor_weather()
-update_hero()
+update_recovery_card()
 save_last_state()
 
 # -------------------------------------------------------
@@ -932,8 +934,11 @@ while True:
                 _is_evening()))
 
         except: pass
-        update_hero()
-        update_tiles()
+        update_readiness_card()
+        update_recovery_card()
+        update_strain_tile()
+        update_climate_tile()
+        update_air_tile()
         update_status_line()
         update_header()
         save_last_state()
@@ -995,7 +1000,7 @@ while True:
     if (now - last_wx_time) >= WEATHER_EVERY:
         last_wx_time = now
         fetch_outdoor_weather()
-        update_hero()
+        update_recovery_card()
         update_header()
         update_status_line()
         save_last_state()
