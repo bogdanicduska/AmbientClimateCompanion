@@ -51,37 +51,39 @@ def resolve_text(text: Optional[str], template: Optional[str]) -> str:
 
 SUPPORTED_TTS_FORMATS = {"mp3", "wav", "opus", "aac", "flac", "pcm"}
 
-# M5Stack Core2 UIFlow `speaker.playWAV` reliably decodes only 8-bit unsigned mono PCM
-# at common sample rates. 16 kHz is the sweet spot — intelligible speech, small files.
+# M5Stack Core2 UIFlow `speaker.playWAV` reads the RIFF header and accepts PCM mono.
+# 8-bit unsigned trips "data format is not valid" on this build, so we keep 16-bit
+# signed and only resample to a rate the on-device DAC handles cleanly.
 M5STACK_RATE     = 16000
-M5STACK_BITS     = 8
+M5STACK_BITS     = 16
 M5STACK_CHANNELS = 1
 
 
 def convert_wav_for_m5stack(wav_bytes: bytes) -> bytes:
-    """Re-encode a WAV (any rate / bit depth / channel count from OpenAI TTS) into
-    the 16 kHz / 8-bit unsigned / mono RIFF/WAVE that M5Stack speaker.playWAV expects."""
+    """Re-encode a WAV (any rate / channel count from OpenAI TTS) into 16 kHz / 16-bit
+    signed / mono RIFF/WAVE — the format M5Stack speaker.playWAV decodes correctly."""
     with wave.open(io.BytesIO(wav_bytes), "rb") as src:
         src_rate     = src.getframerate()
         src_channels = src.getnchannels()
         src_width    = src.getsampwidth()
         frames       = src.readframes(src.getnframes())
 
+    target_width = M5STACK_BITS // 8
+
     if src_channels == 2:
         frames = audioop.tomono(frames, src_width, 0.5, 0.5)
+
+    if src_width != target_width:
+        frames = audioop.lin2lin(frames, src_width, target_width)
+        src_width = target_width
 
     if src_rate != M5STACK_RATE:
         frames, _ = audioop.ratecv(frames, src_width, 1, src_rate, M5STACK_RATE, None)
 
-    if src_width != 1:
-        frames = audioop.lin2lin(frames, src_width, 1)  # → 8-bit signed
-
-    frames = audioop.bias(frames, 1, 128)               # → 8-bit unsigned
-
     out = io.BytesIO()
     with wave.open(out, "wb") as dst:
         dst.setnchannels(M5STACK_CHANNELS)
-        dst.setsampwidth(M5STACK_BITS // 8)
+        dst.setsampwidth(target_width)
         dst.setframerate(M5STACK_RATE)
         dst.writeframes(frames)
     return out.getvalue()

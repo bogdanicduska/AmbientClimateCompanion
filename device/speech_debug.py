@@ -35,10 +35,9 @@ DEVICE_ID = "m5stack-ana-home"
 
 TEST_TEXT = "Hello. This is a speech test from your room assistant."
 
-# Backend ?profile=m5stack converts the OpenAI WAV to 16 kHz / 8-bit unsigned / mono,
-# which is the only format M5Stack Core2 UIFlow `speaker.playWAV` decodes reliably.
+# Backend ?profile=m5stack converts the OpenAI WAV to 16 kHz / 16-bit signed / mono.
 WAV_RATE = 16000
-WAV_BITS = 8
+WAV_BITS = 16
 
 # speaker.playWAV usually wants SD on this firmware (same path that works in main_project.m5f).
 # If SD isn't mounted, fall back to /flash so we can at least find out whether playWAV
@@ -196,7 +195,7 @@ def fetch_tts_wav(text):
 def play_wav_file(wav_path):
     _wake_amp()
     try:
-        show("Playing WAV", wav_path, "16k 8b mono")
+        show("Playing WAV", wav_path, "16k 16b mono")
         speaker.playWAV(wav_path, rate=WAV_RATE)
         return True, "playWAV"
     except Exception as e:
