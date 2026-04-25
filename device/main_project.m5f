@@ -779,6 +779,7 @@ try:
         cloud_norm  = (last_cloud_ts or "")[:19].replace("T", " ")
         cache_norm  = (last_cache_ts or "")[:19]
         if cloud_norm >= cache_norm:
+            compute_room_metrics()
             update_all()
             save_last_state()
     else:
