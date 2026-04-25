@@ -467,13 +467,8 @@ def _compute_air_strain(tvoc, eco2, temp, motion_recent):
     return base
 
 def _is_evening():
-    try:
-        import utime
-        h = utime.localtime()[3] + TZ_OFFSET
-        h = h % 24
-        return h >= 20 or h < 7
-    except:
-        return False
+    h = utime.localtime()[3]
+    return h >= 20 or h < 7
 
 def compute_room_metrics():
     global room_readiness, recovery_score, air_strain, room_state
@@ -482,7 +477,7 @@ def compute_room_metrics():
         room_state = "---"
         return
 
-    motion_recent = (utime.time() - last_motion_trigger_time) < 120
+    motion_recent = (utime.time() - last_motion_trigger_time) < 300
 
     # Room readiness (temp 35%, humidity 30%, TVOC 35%)
     r = (_score_temp_readiness(last_temp)     * 35 +
@@ -572,6 +567,7 @@ def draw_frame():
     lcd.font(lcd.FONT_DejaVu18)
     lcd.print("READINESS", 8,  26, 0x1E4A7A)
     lcd.print("STRAIN",    5, 111, 0x4A3070)
+    lcd.print("hPa",      162, 157, 0x334455)
     # Watermark
     lcd.print("ROOM RHYTHM", 175, 224, 0x1A1A1A)
 
@@ -641,31 +637,56 @@ def strain_color(score):
 
 def rhythm_label():
     now = utime.time()
-    if now - last_motion_trigger_time < 120:
+    if now - last_motion_trigger_time < 300:
         return "Active", 0x00CC55
     if last_motion == 1:
         return "Present", 0x88AA00
     return "Quiet", 0x444444
 
-def get_room_insight():
+def get_status_message():
+    now = utime.time()
+    # 1. Offline
     if network_state == "offline":
         return "Offline. Showing cached data.", 0xFF4444
+    # 2. Sync failed
     if telemetry_state == "failed":
         return "Sync failed. Data may be stale.", 0xFF7700
-    if room_state == "Heavy":
-        return "Air heavy. Try ventilating.", 0xFF5500
-    if room_state == "Dry":
-        return "Dry air. Humidity is low.", 0xFF8800
-    if room_state == "Restless":
-        return "Room conditions unbalanced.", 0xFFAA00
-    if room_state == "Sleep-Friendly":
-        return "Sleep-friendly. Rest well.", 0x5599BB
+    # 3. Weather stale
+    if weather_state in ("stale", "failed"):
+        return "Weather data outdated.", 0xFFAA00
+    # 4. Air strain rising
+    if air_strain is not None and air_strain >= 60:
+        return "Air strain high. Ventilate.", 0xFF5500
+    if air_strain is not None and air_strain >= 35:
+        return "Air strain rising.", 0xFFAA00
+    # 5. Dry conditions
+    if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
+        return "Dry air detected. Humidity low.", 0xFF8800
+    # 6. Just recovered from cloud (within 2 min of boot sync)
+    if cloud_sync_state == "ok" and (now - last_cloud_sync_time) < 120:
+        return "Recovered from cloud.", 0x00CCFF
+    # 7. Motion detected (10 s display window — separate from 300 s metric window)
+    if (now - last_motion_trigger_time) < 10:
+        return "Motion detected.", 0xCCCC00
+    # 8. Recovery-friendly conditions
+    if recovery_score is not None and recovery_score >= 80:
+        return "Recovery-friendly now.", 0x5599BB
+    # 9. Readiness high
+    if room_readiness is not None and room_readiness >= 80:
+        if _is_evening():
+            return "Readiness high. Have a nice sleep.", 0x5599BB
+        return "Readiness high.", 0x00CC55
+    # 10. Fresh state
     if room_state == "Fresh":
-        return "Room is fresh and ready.", 0x00CC55
-    if room_state == "Social":
-        return "Room active. Strain may rise.", 0xAAAA00
+        return "Fresh room state.", 0x00CC55
     if room_state == "Calm":
         return "Calm. Recovery conditions good.", 0x4488BB
+    if room_state == "Sleep-Friendly":
+        return "Sleep-friendly. Rest well.", 0x5599BB
+    if room_state == "Social":
+        return "Room active. Strain may rise.", 0xCCCC00
+    if room_state == "Restless":
+        return "Room conditions unbalanced.", 0xFFAA00
     return "Monitoring room conditions.", 0x444444
 
 # -------------------------------------------------------
@@ -762,19 +783,21 @@ def update_tiles():
     lcd.rect(122, 132, 76, 22, CARD_CLIM, CARD_CLIM)
     lcd.print((str(int(last_humidity)) + " %") if last_humidity is not None else "-- %", 126, 134, 0x66CCFF)
     lcd.rect(122, 154, 76, 22, CARD_CLIM, CARD_CLIM)
-    lcd.print(last_pressure_text + " hPa", 126, 156, 0x667788)
+    lcd.print(last_pressure_text, 126, 156, 0x667788)
 
     # --- AQ card (x=201..319, y=109..177) ---
+    aq_label, aq_color = aq_status(last_tvoc)
+    aq_ppb = (" " + str(int(last_tvoc))) if last_tvoc is not None else ""
     lcd.rect(202, 109, 116, 22, CARD_AQ, CARD_AQ)
-    lcd.print("TVOC " + (str(int(last_tvoc)) if last_tvoc is not None else "---"), 206, 111, 0xCCCCCC)
+    lcd.print(aq_label + aq_ppb, 206, 111, aq_color)
     lcd.rect(202, 132, 116, 22, CARD_AQ, CARD_AQ)
     lcd.print("CO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"), 206, 134, 0xFFCC99)
     r_text, r_color = rhythm_label()
     lcd.rect(202, 154, 116, 22, CARD_AQ, CARD_AQ)
     lcd.print(r_text, 206, 156, r_color)
 
-def update_insight():
-    text, color = get_room_insight()
+def update_status_line():
+    text, color = get_status_message()
     lcd.rect(0, 180, 320, 42, BG, BG)
     lcd.font(lcd.FONT_DejaVu18)
     lcd.print(text, 10, 186, color)
@@ -786,7 +809,7 @@ def update_all():
     except: pass
     try: update_tiles()
     except: pass
-    try: update_insight()
+    try: update_status_line()
     except: pass
 
 # -------------------------------------------------------
@@ -817,11 +840,16 @@ draw_frame()
 init_labels()
 update_all()
 
-# 3. NTP — silent, just update clock labels
+# 3. NTP — sync clock, then recompute metrics with correct time
 try:
     ntp_sync()
     lbl_time.setText(fmt_time())
     lbl_date.setText(fmt_date())
+    compute_room_metrics()
+    update_hero()
+    update_tiles()
+    update_status_line()
+    save_last_state()
 except: pass
 
 # 4. Cloud sync — overwrite only if cloud data is fresher than cache
@@ -897,11 +925,16 @@ while True:
             prev_motion = last_motion
 
             compute_room_metrics()
+            print("[metrics] readiness=%s recovery=%s strain=%s state=%s | temp=%s hum=%s tvoc=%s motion_recent=%s evening=%s" % (
+                room_readiness, recovery_score, air_strain, room_state,
+                last_temp, last_humidity, last_tvoc,
+                (utime.time() - last_motion_trigger_time) < 300,
+                _is_evening()))
 
         except: pass
         update_hero()
         update_tiles()
-        update_insight()
+        update_status_line()
         update_header()
         save_last_state()
 
@@ -919,6 +952,8 @@ while True:
                 if silent_reconnect():
                     wifi_was_up = True
                     network_state = "online"
+                    update_header()
+                    update_status_line()
         except: pass
 
     # Telemetry every SEND_EVERY s
@@ -954,7 +989,7 @@ while True:
             network_state   = "offline"
             send_event("room_sync_failed", {"error": str(e)[:60]})
         update_header()
-        update_insight()
+        update_status_line()
 
     # Weather refresh every WEATHER_EVERY s
     if (now - last_wx_time) >= WEATHER_EVERY:
@@ -962,7 +997,7 @@ while True:
         fetch_outdoor_weather()
         update_hero()
         update_header()
-        update_insight()
+        update_status_line()
         save_last_state()
 
     wait(1)
