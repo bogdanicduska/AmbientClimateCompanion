@@ -1,17 +1,17 @@
 # -------------------------------------------------------------------
 # speech_debug.py
-# Step by step debug version for Core2 speech
-# Tests:
-# 1. WiFi
-# 2. ASK endpoint
-# 3. TTS endpoint (WAV)
-# 4. WAV save to /sd/
-# 5. speaker.playWAV playback
+# Step by step debug version for Core2 speech.
 #
-# Buttons:
-# A = test tone only
-# B = test TTS only
-# C = test ASK then TTS
+# Buttons (each handler is re-entry guarded):
+#   A = 3 short tones (verifies firmware speaker)
+#   B = TTS only — fetch WAV from backend, play via speaker.playWAV
+#   C = ASK then TTS — full pipeline
+#
+# Notes:
+# - We do NOT import machine.I2S at module load on this firmware. Doing so
+#   locks the I2S peripheral and speaker.playTone hangs.
+# - WAV files are 44.1 kHz / 16-bit / mono — same shape as the working
+#   /sd/test.wav in main_project.m5f. Saved to /sd/ if mounted, else /flash.
 # -------------------------------------------------------------------
 
 from m5stack import lcd, btnA, btnB, btnC, speaker
@@ -35,47 +35,53 @@ DEVICE_ID = "m5stack-ana-home"
 
 TEST_TEXT = "Hello. This is a speech test from your room assistant."
 
-# Backend ?profile=m5stack converts the OpenAI WAV to 16 kHz / 16-bit signed / mono.
-WAV_RATE = 16000
+# Backend ?profile=m5stack returns 44.1 kHz / 16-bit signed / mono — the same
+# format that worked for /sd/test.wav in main_project.m5f.
+WAV_RATE = 44100
 WAV_BITS = 16
 
-# speaker.playWAV usually wants SD on this firmware (same path that works in main_project.m5f).
-# If SD isn't mounted, fall back to /flash so we can at least find out whether playWAV
-# accepts flash on this build.
 WAV_PATHS = ("/sd/answer.wav", "/flash/answer.wav")
 
 # -------------------------------------------------------------------
-# UI helpers
+# Re-entry guard — capacitive touch buttons can self-trigger from speaker
+# vibration; without this, pressing A locks the device into endless beeps.
+# -------------------------------------------------------------------
+_busy = False
+def _guard(handler):
+    def wrapped():
+        global _busy
+        if _busy:
+            print("guard: handler already running, ignoring press")
+            return
+        _busy = True
+        try:
+            handler()
+        except Exception as e:
+            print("handler error:", e)
+        finally:
+            _busy = False
+    return wrapped
+
+# -------------------------------------------------------------------
+# UI
 # -------------------------------------------------------------------
 setScreenColor(0x111111)
 
 def show(line1="", line2="", line3="", c1=0xFFFFFF, c2=0x00FFCC, c3=0xAAAAAA):
     lcd.clear()
-    lcd.setCursor(5, 10)
-    lcd.setColor(c1)
-    lcd.print(line1[:38])
-
+    lcd.setCursor(5, 10);  lcd.setColor(c1); lcd.print(line1[:38])
     if line2:
-        lcd.setCursor(5, 45)
-        lcd.setColor(c2)
-        lcd.print(line2[:38])
-
+        lcd.setCursor(5, 45); lcd.setColor(c2); lcd.print(line2[:38])
     if line3:
-        lcd.setCursor(5, 80)
-        lcd.setColor(c3)
-        lcd.print(line3[:38])
+        lcd.setCursor(5, 80); lcd.setColor(c3); lcd.print(line3[:38])
 
 def show_idle():
-    show(
-        "Speech Debug",
-        "A tone   B tts   C ask",
-        "Check serial too"
-    )
+    show("Speech Debug", "A tone   B tts   C ask", "")
 
 def _auth_headers():
     return {
         "Authorization": "Bearer " + DEVICE_AUTH_TOKEN,
-        "Content-Type": "application/json"
+        "Content-Type":  "application/json",
     }
 
 # -------------------------------------------------------------------
@@ -84,90 +90,72 @@ def _auth_headers():
 def ensure_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-
     if wlan.isconnected():
-        ip = wlan.ifconfig()[0]
-        show("WiFi already OK", ip)
-        time.sleep(2)
+        show("WiFi already OK", wlan.ifconfig()[0])
+        time.sleep(1)
         return True
-
-    show("Connecting WiFi", WIFI_SSID, "Please wait")
+    show("Connecting WiFi", WIFI_SSID, "")
     wlan.connect(WIFI_SSID, WIFI_PASS)
-
     for _ in range(20):
         if wlan.isconnected():
-            ip = wlan.ifconfig()[0]
-            show("WiFi connected", ip)
-            time.sleep(2)
+            show("WiFi connected", wlan.ifconfig()[0])
+            time.sleep(1)
             return True
         time.sleep(0.5)
-
-    show("WiFi failed", "Check SSID/password", "")
-    time.sleep(3)
+    show("WiFi failed", "Check SSID/pass", "")
+    time.sleep(2)
     return False
 
 # -------------------------------------------------------------------
-# Tone test — also wakes the AXP-controlled amp before WAV playback.
+# Tone test — known-good baseline. 3 short beeps, ~3 seconds total.
 # -------------------------------------------------------------------
-def _wake_amp():
-    try:
-        speaker.setVolume(100)
-    except:
-        pass
-    try:
-        speaker.playTone(440, 1)
-    except:
-        pass
-
 def test_tone():
-    show("Tone test", "Playing 3 beeps", "")
+    show("Tone test", "3 short beeps", "")
     try:
-        _wake_amp()
+        try:
+            speaker.setVolume(100)
+        except:
+            pass
         for _ in range(3):
             speaker.playTone(440, 400)
             time.sleep(0.6)
-        show("Tone OK", "If you heard beeps", "")
+        show("Tone OK", "If you heard 3 beeps", "")
     except Exception as e:
         show("Tone error", str(e)[:35], "")
     time.sleep(2)
     show_idle()
 
 # -------------------------------------------------------------------
-# Fetch WAV — backend returns 24 kHz / 16-bit / mono RIFF/WAVE.
-# Tries each candidate path in WAV_PATHS until one accepts the write.
+# Fetch the WAV — backend ?profile=m5stack returns 44.1 kHz / 16-bit / mono.
 # -------------------------------------------------------------------
 def fetch_tts_wav(text):
     try:
         body = ujson.dumps({
             "device_id": DEVICE_ID,
-            "text": text,
-            "format": "wav"
+            "text":      text,
+            "format":    "wav",
         }).encode("utf-8")
 
         url = BACKEND_URL + "/api/v1/speech/tts?raw=1&profile=m5stack"
         r = urequests.post(url, data=body, headers=_auth_headers())
-
         show("TTS HTTP", str(r.status_code), "Downloading")
         print("TTS status:", r.status_code)
 
         if r.status_code != 200:
-            try:
-                err = r.text
-            except:
-                err = "No error text"
-            print("TTS error body:", err)
+            try: err = r.text
+            except: err = "no text"
+            print("TTS err body:", err)
             r.close()
             return False, "HTTP " + str(r.status_code)
 
         try:
             content = r.content
         except Exception as e:
-            print("No r.content:", e)
             r.close()
-            return False, "No binary content"
+            return False, "no body: " + str(e)
         r.close()
 
-        last_err = "no path tried"
+        last_err = "no path"
         for candidate in WAV_PATHS:
             try:
                 with open(candidate, "wb") as f:
@@ -180,8 +168,7 @@ def fetch_tts_wav(text):
                 return True, candidate
             except Exception as e:
                 last_err = "{0}: {1}".format(candidate, e)
-                print("WAV write failed at", candidate, "->", e)
-
+                print("write failed:", last_err)
         return False, last_err
 
     except Exception as e:
@@ -189,18 +176,34 @@ def fetch_tts_wav(text):
         return False, str(e)
 
 # -------------------------------------------------------------------
-# Playback — `rate=` is the only kwarg this firmware's playWAV accepts.
-# File is already 16 kHz / 8-bit unsigned / mono thanks to ?profile=m5stack.
+# Playback — try several speaker.playWAV signatures. The first one that
+# raises a non-TypeError (or raises nothing) is what this firmware accepts.
 # -------------------------------------------------------------------
 def play_wav_file(wav_path):
-    _wake_amp()
     try:
-        show("Playing WAV", wav_path, "16k 16b mono")
-        speaker.playWAV(wav_path, rate=WAV_RATE)
-        return True, "playWAV"
-    except Exception as e:
-        print("play_wav_file error:", e)
-        return False, str(e)
+        speaker.setVolume(100)
+    except:
+        pass
+
+    variants = (
+        ("path-only",  lambda p: speaker.playWAV(p)),
+        ("rate-kw",    lambda p: speaker.playWAV(p, rate=WAV_RATE)),
+        ("positional", lambda p: speaker.playWAV(p, WAV_RATE, WAV_BITS)),
+    )
+    last_err = "no variant tried"
+    for label, fn in variants:
+        try:
+            show("Playing WAV", label, wav_path)
+            print("playWAV variant:", label)
+            fn(wav_path)
+            return True, label
+        except TypeError as e:
+            last_err = "{0} TypeError: {1}".format(label, e)
+            print(last_err)
+        except Exception as e:
+            print("playWAV non-TypeError:", e)
+            return False, "{0}: {1}".format(label, e)
+    return False, last_err
 
 # -------------------------------------------------------------------
 # TTS only test
@@ -208,19 +211,17 @@ def play_wav_file(wav_path):
 def test_tts_only():
     show("TTS test", "Requesting audio", "")
     ok, result = fetch_tts_wav(TEST_TEXT)
-
     if not ok:
-        show("TTS fetch failed", str(result)[:35], "")
+        show("Fetch failed", str(result)[:35], "")
         time.sleep(3)
         show_idle()
         return
 
-    ok2, result2 = play_wav_file(result)
-
+    ok2, info = play_wav_file(result)
     if ok2:
-        show("Playback OK", str(result2)[:35], "")
+        show("Playback OK", str(info)[:35], "")
     else:
-        show("Playback failed", str(result2)[:35], "")
+        show("Playback failed", str(info)[:35], "")
     time.sleep(3)
     show_idle()
 
@@ -234,23 +235,19 @@ def test_ask_then_tts():
     try:
         body = ujson.dumps({
             "device_id": DEVICE_ID,
-            "question": question
+            "question":  question,
         }).encode("utf-8")
 
         r = urequests.post(
             BACKEND_URL + "/api/v1/speech/ask",
-            data=body,
-            headers=_auth_headers()
+            data=body, headers=_auth_headers(),
         )
-
         print("ASK status:", r.status_code)
 
         if r.status_code != 200:
-            try:
-                err = r.text
-            except:
-                err = "No error text"
-            print("ASK error body:", err)
+            try: err = r.text
+            except: err = "no text"
+            print("ASK err body:", err)
             r.close()
             show("ASK failed", "HTTP " + str(r.status_code), "")
             time.sleep(3)
@@ -259,12 +256,10 @@ def test_ask_then_tts():
 
         data = r.json()
         r.close()
-
         answer = data.get("data", {}).get("answer", "")
         intent = data.get("data", {}).get("intent", "")
         print("ASK intent:", intent)
         print("ASK answer:", answer)
-
         show("ASK OK", intent[:28], answer[:28])
         time.sleep(2)
 
@@ -276,21 +271,20 @@ def test_ask_then_tts():
 
         ok, result = fetch_tts_wav(answer)
         if not ok:
-            show("TTS fetch failed", str(result)[:35], "")
+            show("Fetch failed", str(result)[:35], "")
             time.sleep(3)
             show_idle()
             return
 
-        ok2, result2 = play_wav_file(result)
+        ok2, info = play_wav_file(result)
         if ok2:
-            show("ASK plus TTS OK", str(result2)[:35], "")
+            show("ASK plus TTS OK", str(info)[:35], "")
         else:
-            show("Playback failed", str(result2)[:35], "")
+            show("Playback failed", str(info)[:35], "")
 
     except Exception as e:
         print("ASK test error:", e)
         show("ASK error", str(e)[:35], "")
-
     time.sleep(3)
     show_idle()
 
@@ -302,9 +296,9 @@ if ensure_wifi():
 else:
     show("No WiFi", "Fix config first", "")
 
-btnA.wasPressed(test_tone)
-btnB.wasPressed(test_tts_only)
-btnC.wasPressed(test_ask_then_tts)
+btnA.wasPressed(_guard(test_tone))
+btnB.wasPressed(_guard(test_tts_only))
+btnC.wasPressed(_guard(test_ask_then_tts))
 
 while True:
     time.sleep(1)

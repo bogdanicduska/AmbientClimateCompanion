@@ -51,10 +51,10 @@ def resolve_text(text: Optional[str], template: Optional[str]) -> str:
 
 SUPPORTED_TTS_FORMATS = {"mp3", "wav", "opus", "aac", "flac", "pcm"}
 
-# M5Stack Core2 UIFlow `speaker.playWAV` reads the RIFF header and accepts PCM mono.
-# 8-bit unsigned trips "data format is not valid" on this build, so we keep 16-bit
-# signed and only resample to a rate the on-device DAC handles cleanly.
-M5STACK_RATE     = 16000
+# M5Stack Core2 UIFlow `speaker.playWAV` reads the RIFF header. 44.1 kHz / 16-bit
+# signed / mono is the exact shape that the user's known-working /sd/test.wav uses,
+# so we match it to maximize the chance that playWAV decodes our file too.
+M5STACK_RATE     = 44100
 M5STACK_BITS     = 16
 M5STACK_CHANNELS = 1
 
