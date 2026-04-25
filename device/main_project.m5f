@@ -416,6 +416,65 @@ def fetch_forecast():
 #                  condition (Fresh / Calm / Dry / Heavy / Social /
 #                  Sleep-Friendly / Restless).
 # -------------------------------------------------------
+def _score_temp_readiness(t):
+    if t is None: return 50
+    if 20 <= t <= 24: return 100
+    if 18 <= t < 20 or 24 < t <= 26: return 60
+    return 20
+
+def _score_humidity_readiness(h):
+    if h is None: return 50
+    if 40 <= h <= 60: return 100
+    if 35 <= h < 40 or 60 < h <= 65: return 60
+    return 20
+
+def _score_tvoc_readiness(v):
+    if v is None: return 50
+    if v < 100: return 100
+    if v < 150: return 65
+    if v < 200: return 35
+    return 5
+
+def _score_temp_recovery(t):
+    if t is None: return 50
+    if 18 <= t <= 22: return 100
+    if 16 <= t < 18 or 22 < t <= 24: return 60
+    return 20
+
+def _score_humidity_recovery(h):
+    if h is None: return 50
+    if 45 <= h <= 65: return 100
+    if 40 <= h < 45 or 65 < h <= 70: return 65
+    if h < 40: return 20
+    return 40
+
+def _score_tvoc_recovery(v):
+    if v is None: return 50
+    if v < 100: return 100
+    if v < 150: return 60
+    if v < 200: return 25
+    return 0
+
+def _compute_air_strain(tvoc, eco2, temp, motion_recent):
+    if tvoc is None: return 0
+    if tvoc >= 200:   base = 85
+    elif tvoc >= 150: base = 65
+    elif tvoc >= 100: base = 40
+    else:             base = 10
+    if eco2 is not None and eco2 > 1000: base = min(100, base + 10)
+    if temp is not None and temp > 25 and base > 30: base = min(100, base + 8)
+    if motion_recent: base = min(100, base + 7)
+    return base
+
+def _is_evening():
+    try:
+        import utime
+        h = utime.localtime()[3] + TZ_OFFSET
+        h = h % 24
+        return h >= 20 or h < 7
+    except:
+        return False
+
 def compute_room_metrics():
     global room_readiness, recovery_score, air_strain, room_state
 
@@ -423,45 +482,42 @@ def compute_room_metrics():
         room_state = "---"
         return
 
-    # Air strain: rises with TVOC and low humidity
-    if last_tvoc >= AQ_HAZARD_THRESHOLD:
-        air_strain = 90
-    elif last_tvoc >= AQ_POOR_THRESHOLD:
-        air_strain = 60
-    elif last_tvoc >= 100:
-        air_strain = 30
-    else:
-        air_strain = 10
+    motion_recent = (utime.time() - last_motion_trigger_time) < 120
 
-    # Room readiness: penalise poor air, extreme temps, low humidity
-    base = 100
-    if last_tvoc >= AQ_POOR_THRESHOLD: base -= 40
-    elif last_tvoc >= 100:             base -= 15
-    if last_temp < 18 or last_temp > 26: base -= 20
-    if last_humidity < HUMIDITY_LOW_THRESHOLD: base -= 15
-    room_readiness = max(0, min(100, base))
+    # Room readiness (temp 35%, humidity 30%, TVOC 35%)
+    r = (_score_temp_readiness(last_temp)     * 35 +
+         _score_humidity_readiness(last_humidity) * 30 +
+         _score_tvoc_readiness(last_tvoc)     * 35) // 100
+    room_readiness = max(0, min(100, r))
 
-    # Recovery score: good when cool, calm, fresh air
-    rec = 100
-    if last_tvoc >= AQ_POOR_THRESHOLD: rec -= 40
-    elif last_tvoc >= 100:             rec -= 15
-    if last_temp < 16 or last_temp > 22: rec -= 20
-    if last_motion == 1:               rec -= 10
-    recovery_score = max(0, min(100, rec))
+    # Recovery score (temp 30%, humidity 25%, TVOC 40%, evening bonus, motion penalty)
+    v = (_score_temp_recovery(last_temp)     * 30 +
+         _score_humidity_recovery(last_humidity) * 25 +
+         _score_tvoc_recovery(last_tvoc)     * 40) // 95
+    if _is_evening() and last_tvoc < 100 and not motion_recent:
+        v = min(100, v + 8)
+    if motion_recent:
+        v = max(0, v - 10)
+    if last_motion == 1:
+        v = max(0, v - 5)
+    recovery_score = max(0, min(100, v))
 
-    # Room state label (priority order)
-    if last_tvoc >= AQ_POOR_THRESHOLD:
-        room_state = "Heavy"
-    elif last_humidity < HUMIDITY_LOW_THRESHOLD:
+    # Air strain
+    air_strain = _compute_air_strain(last_tvoc, last_eco2, last_temp, motion_recent)
+
+    # Room state (priority: Dry → Heavy → Social → Sleep-Friendly → Calm → Fresh)
+    if last_humidity < HUMIDITY_LOW_THRESHOLD:
         room_state = "Dry"
-    elif last_motion == 1 and last_tvoc < 100:
+    elif last_tvoc >= AQ_POOR_THRESHOLD or air_strain >= 65:
+        room_state = "Heavy"
+    elif motion_recent or last_motion == 1:
         room_state = "Social"
-    elif last_tvoc < 100 and 18 <= last_temp <= 24 and last_humidity >= 40:
-        room_state = "Fresh"
-    elif last_temp <= 20 and last_tvoc < 100:
+    elif _is_evening() and recovery_score >= 65:
         room_state = "Sleep-Friendly"
-    elif last_tvoc < 150:
+    elif recovery_score >= 70:
         room_state = "Calm"
+    elif room_readiness >= 70:
+        room_state = "Fresh"
     else:
         room_state = "Restless"
 
