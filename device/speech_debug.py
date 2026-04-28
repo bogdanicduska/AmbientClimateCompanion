@@ -22,6 +22,16 @@ import urequests
 import ujson
 import time
 import gc
+import uos
+
+# SDCard + Pin from machine are safe to import. machine.I2S is NOT — importing
+# it locks the I2S peripheral on this firmware and speaker.playTone hangs.
+try:
+    from machine import SDCard, Pin
+    _HAS_SDCARD = True
+except Exception as _sd_imp_err:
+    print("SD: machine.SDCard import failed:", _sd_imp_err)
+    _HAS_SDCARD = False
 
 # -------------------------------------------------------------------
 # CONFIG
@@ -35,10 +45,13 @@ DEVICE_ID = "m5stack-ana-home"
 
 TEST_TEXT = "Hello. This is a speech test from your room assistant."
 
-# Backend ?profile=m5stack returns 44.1 kHz / 16-bit signed / mono — the same
-# format that worked for /sd/test.wav in main_project.m5f.
-WAV_RATE = 44100
-WAV_BITS = 16
+# Backend ?profile=m5stack returns 16 kHz / 8-bit *unsigned* / mono. That is
+# the only PCM shape this UIFlow1 build's speaker.playWAV decodes reliably
+# (44.1 kHz / 16-bit downloads fine but plays silent — confirmed on device).
+# The fmt chunk we read off /sd/answer.wav after download must show
+# "PCM 16000Hz 8b ch1" for playback to work.
+WAV_RATE = 16000
+WAV_BITS = 8
 
 WAV_PATHS = ("/sd/answer.wav", "/flash/answer.wav")
 
@@ -85,6 +98,44 @@ def _auth_headers():
     }
 
 # -------------------------------------------------------------------
+# SD card mount — Core2 built-in slot uses sck=23, miso=33, mosi=19.
+# We try this in order:
+#   1. uos.listdir('/sd')   — already mounted by firmware? then we're done.
+#   2. uos.mountsd(sd, ...) — UIFlow1 helper.
+#   3. uos.mount(sd, ...)   — generic MicroPython VFS mount.
+# Returns True if /sd is usable after the call.
+# -------------------------------------------------------------------
+def mount_sd():
+    if not _HAS_SDCARD:
+        return False
+    try:
+        uos.listdir("/sd")
+        print("SD: already mounted at /sd")
+        return True
+    except Exception:
+        pass
+    try:
+        sd = SDCard(slot=2, sck=Pin(23), miso=Pin(33), mosi=Pin(19), freq=10000000)
+    except Exception as e:
+        print("SD: SDCard() failed:", e)
+        return False
+    fn = getattr(uos, "mountsd", None)
+    if fn:
+        try:
+            fn(sd, "/sd")
+            print("SD: mounted via uos.mountsd")
+            return True
+        except Exception as e:
+            print("SD: uos.mountsd failed:", e)
+    try:
+        uos.mount(sd, "/sd")
+        print("SD: mounted via uos.mount")
+        return True
+    except Exception as e:
+        print("SD: uos.mount failed:", e)
+        return False
+
+# -------------------------------------------------------------------
 # WiFi
 # -------------------------------------------------------------------
 def ensure_wifi():
@@ -107,22 +158,63 @@ def ensure_wifi():
     return False
 
 # -------------------------------------------------------------------
-# Tone test — known-good baseline. 3 short beeps, ~3 seconds total.
+# WAV inspector — read the saved file's RIFF/fmt chunk and return
+# (is_riff_ok, "rate=44100 bits=16 ch=1 fmt=PCM size=277408"). If
+# the firmware silently rejects the WAV, this tells us *exactly*
+# what format the file actually has on disk vs what we expected.
+# -------------------------------------------------------------------
+def _inspect_wav(path):
+    try:
+        with open(path, "rb") as f:
+            head = f.read(12)
+            if len(head) < 12 or head[0:4] != b"RIFF" or head[8:12] != b"WAVE":
+                return False, "no RIFF/WAVE"
+            # Walk chunks looking for "fmt ". Skip everything else.
+            while True:
+                chunk_hdr = f.read(8)
+                if len(chunk_hdr) < 8:
+                    return True, "no fmt chunk"
+                cid = chunk_hdr[0:4]
+                csize = (chunk_hdr[4] | (chunk_hdr[5] << 8)
+                         | (chunk_hdr[6] << 16) | (chunk_hdr[7] << 24))
+                body = f.read(csize)
+                if cid == b"fmt ":
+                    if len(body) < 16:
+                        return True, "fmt too short"
+                    fmt_code = body[0] | (body[1] << 8)
+                    nchan    = body[2] | (body[3] << 8)
+                    rate     = (body[4] | (body[5] << 8)
+                                | (body[6] << 16) | (body[7] << 24))
+                    bits     = body[14] | (body[15] << 8)
+                    fmt_name = {1: "PCM", 3: "FLOAT", 0xFFFE: "EXT"}.get(fmt_code, str(fmt_code))
+                    return True, "{0} {1}Hz {2}b ch{3}".format(fmt_name, rate, bits, nchan)
+    except Exception as e:
+        return False, "read err: " + str(e)[:25]
+
+# -------------------------------------------------------------------
+# Tone test — known-good baseline. 3 short beeps, then if /sd/test.wav
+# exists, attempt to play it. main_project.m5f confirmed test.wav plays
+# on this firmware — so if we hear it here, speaker.playWAV is fine and
+# the TTS-WAV silence is a backend-format issue. If we don't, the issue
+# is the playWAV call signature itself.
 # -------------------------------------------------------------------
 def test_tone():
-    show("Tone test", "3 short beeps", "")
+    show("Tone test", "2 short beeps", "")
     try:
         try:
-            speaker.setVolume(100)
+            speaker.setVolume(4)  # quieter — speaker vibration was retriggering capA
         except:
             pass
-        for _ in range(3):
-            speaker.playTone(440, 400)
-            time.sleep(0.6)
-        show("Tone OK", "If you heard 3 beeps", "")
+        # 2 brief tones, ~0.6s total. Keeps the handler short so the touch
+        # button has less chance to self-trigger from speaker vibration.
+        speaker.playTone(440, 120)
+        time.sleep(0.18)
+        speaker.playTone(660, 120)
+        time.sleep(0.5)  # silent cooldown — settles capacitive touch noise
+        show("Tone OK", "Heard 2 beeps?", "")
     except Exception as e:
         show("Tone error", str(e)[:35], "")
-    time.sleep(2)
+    time.sleep(1)
     show_idle()
 
 # -------------------------------------------------------------------
@@ -161,10 +253,21 @@ def fetch_tts_wav(text):
                 with open(candidate, "wb") as f:
                     f.write(content)
                 size = len(content) if content else 0
-                print("WAV saved:", candidate, "size:", size)
-                show("WAV saved", candidate, "size " + str(size))
+                hdr_ok, fmt_info = _inspect_wav(candidate)
+                print("WAV saved:", candidate, "size:", size,
+                      "hdr_ok:", hdr_ok, "fmt:", fmt_info)
+                if hdr_ok:
+                    show("WAV saved",
+                         "size " + str(size),
+                         fmt_info)
+                else:
+                    show("WAV saved",
+                         "BAD HDR " + str(size),
+                         fmt_info)
                 gc.collect()
-                time.sleep(1)
+                time.sleep(2)
+                if not hdr_ok:
+                    return False, "bad WAV header at " + candidate
                 return True, candidate
             except Exception as e:
                 last_err = "{0}: {1}".format(candidate, e)
@@ -178,27 +281,73 @@ def fetch_tts_wav(text):
 # -------------------------------------------------------------------
 # Playback — try several speaker.playWAV signatures. The first one that
 # raises a non-TypeError (or raises nothing) is what this firmware accepts.
+#
+# IMPORTANT: speaker.playWAV is asynchronous on UIFlow1. It returns
+# immediately after queuing; "no exception" does NOT mean it played sound.
+# We pre-beep first to prove the audio chain is alive, and we sleep after
+# play so the next button press doesn't cut the buffer.
 # -------------------------------------------------------------------
-def play_wav_file(wav_path):
+_speaker_dir_logged = False
+
+def _log_speaker_methods():
+    global _speaker_dir_logged
+    if _speaker_dir_logged:
+        return
+    _speaker_dir_logged = True
     try:
-        speaker.setVolume(100)
+        attrs = [a for a in dir(speaker) if not a.startswith("_")]
+        print("speaker dir:", attrs)
+    except Exception as e:
+        print("speaker dir failed:", e)
+
+def play_wav_file(wav_path):
+    _log_speaker_methods()
+    try:
+        # 0..11 scale on UIFlow1. 6 is comfortable; 100 silently clips to silence.
+        speaker.setVolume(6)
     except:
         pass
 
+    # Pre-beep — if you hear this but not the WAV, the WAV format / playWAV
+    # signature is the issue. If you hear NEITHER, volume / speaker init is.
+    try:
+        speaker.playTone(880, 150)
+        time.sleep(0.25)
+    except Exception as e:
+        print("pre-beep failed:", e)
+
+    # Estimate WAV duration so we can sleep through async playback.
+    try:
+        wav_size = uos.stat(wav_path)[6]
+    except Exception:
+        wav_size = 0
+    bytes_per_sec = WAV_RATE * (WAV_BITS // 8)  # mono
+    est_secs = max(1.0, (wav_size - 44) / float(bytes_per_sec)) if wav_size else 3.0
+    if est_secs > 30:
+        est_secs = 30  # safety cap
+
     variants = (
-        ("path-only",  lambda p: speaker.playWAV(p)),
-        ("rate-kw",    lambda p: speaker.playWAV(p, rate=WAV_RATE)),
-        ("positional", lambda p: speaker.playWAV(p, WAV_RATE, WAV_BITS)),
+        ("playWAV-path",    lambda p: speaker.playWAV(p)),
+        ("playWav-path",    lambda p: speaker.playWav(p)),
+        ("playWavFile",     lambda p: speaker.playWavFile(p)),
+        ("play_wav-path",   lambda p: speaker.play_wav(p)),
+        ("playWAV-rate-kw", lambda p: speaker.playWAV(p, rate=WAV_RATE)),
+        ("playWAV-pos",     lambda p: speaker.playWAV(p, WAV_RATE, WAV_BITS)),
     )
     last_err = "no variant tried"
     for label, fn in variants:
         try:
             show("Playing WAV", label, wav_path)
-            print("playWAV variant:", label)
+            print("playWAV variant:", label, "est_secs:", est_secs)
             fn(wav_path)
+            # Block while async playback drains.
+            time.sleep(est_secs + 0.5)
             return True, label
         except TypeError as e:
             last_err = "{0} TypeError: {1}".format(label, e)
+            print(last_err)
+        except AttributeError as e:
+            last_err = "{0} missing: {1}".format(label, e)
             print(last_err)
         except Exception as e:
             print("playWAV non-TypeError:", e)
@@ -291,6 +440,11 @@ def test_ask_then_tts():
 # -------------------------------------------------------------------
 # Main
 # -------------------------------------------------------------------
+_sd_ok = mount_sd()
+show("SD: " + ("mounted /sd" if _sd_ok else "not mounted"),
+     "WAV will use " + ("/sd" if _sd_ok else "/flash"), "")
+time.sleep(1)
+
 if ensure_wifi():
     show_idle()
 else:

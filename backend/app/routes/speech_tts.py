@@ -87,7 +87,7 @@ def tts():
                 "X-Sample-Rate": str(M5STACK_RATE),
                 "X-Bit-Depth":   str(M5STACK_BITS),
                 "X-Channels":    str(M5STACK_CHANNELS),
-                "X-Encoding":    "pcm_s16le",
+                "X-Encoding":    "pcm_u8",
             })
         elif audio_format == "pcm":
             headers.update(_PCM_FORMAT_HEADERS)
