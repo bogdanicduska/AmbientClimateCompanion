@@ -45,13 +45,14 @@ DEVICE_ID = "m5stack-ana-home"
 
 TEST_TEXT = "Hello. This is a speech test from your room assistant."
 
-# Backend ?profile=m5stack returns 16 kHz / 8-bit *unsigned* / mono. That is
-# the only PCM shape this UIFlow1 build's speaker.playWAV decodes reliably
-# (44.1 kHz / 16-bit downloads fine but plays silent — confirmed on device).
-# The fmt chunk we read off /sd/answer.wav after download must show
-# "PCM 16000Hz 8b ch1" for playback to work.
+# Backend ?profile=m5stack returns 16 kHz / 16-bit signed / mono. UIFlow1's
+# speaker module on this firmware exposes constants F16B / F24B / F32B for
+# bit depth — there is no F8B, so 8-bit is rejected as "data format is not
+# valid". 16 kHz keeps a 3 s clip ~100 KB which playRaw / playWAV can load.
+# The fmt chunk read off /sd/answer.wav after download MUST show
+# "PCM 16000Hz 16b ch1" for playback to work.
 WAV_RATE = 16000
-WAV_BITS = 8
+WAV_BITS = 16
 
 WAV_PATHS = ("/sd/answer.wav", "/flash/answer.wav")
 
@@ -279,13 +280,13 @@ def fetch_tts_wav(text):
         return False, str(e)
 
 # -------------------------------------------------------------------
-# Playback — try several speaker.playWAV signatures. The first one that
-# raises a non-TypeError (or raises nothing) is what this firmware accepts.
+# Playback — uses speaker.playRaw with explicit format constants
+# (F16B / CHN_L) which is the bypass-the-WAV-parser API exposed by this
+# firmware. We strip the RIFF header to get raw PCM bytes and hand them
+# directly to playRaw. playWAV is kept as a final fallback.
 #
-# IMPORTANT: speaker.playWAV is asynchronous on UIFlow1. It returns
-# immediately after queuing; "no exception" does NOT mean it played sound.
-# We pre-beep first to prove the audio chain is alive, and we sleep after
-# play so the next button press doesn't cut the buffer.
+# IMPORTANT: playRaw / playWAV are asynchronous. We sleep through the
+# estimated clip duration so the next press doesn't cut the buffer.
 # -------------------------------------------------------------------
 _speaker_dir_logged = False
 
@@ -300,21 +301,31 @@ def _log_speaker_methods():
     except Exception as e:
         print("speaker dir failed:", e)
 
+def _load_pcm_from_wav(path):
+    """Walk RIFF chunks and return the raw PCM bytes from the data chunk
+    (and total bytes). Without this, OpenAI WAVs sometimes carry a LIST/INFO
+    chunk before data, so a naive "skip 44 bytes" assumption misaligns audio."""
+    with open(path, "rb") as f:
+        head = f.read(12)
+        if len(head) < 12 or head[0:4] != b"RIFF" or head[8:12] != b"WAVE":
+            return None
+        while True:
+            chunk_hdr = f.read(8)
+            if len(chunk_hdr) < 8:
+                return None
+            cid = chunk_hdr[0:4]
+            csize = (chunk_hdr[4] | (chunk_hdr[5] << 8)
+                     | (chunk_hdr[6] << 16) | (chunk_hdr[7] << 24))
+            if cid == b"data":
+                return f.read(csize)
+            f.read(csize)  # skip non-data chunk
+
 def play_wav_file(wav_path):
     _log_speaker_methods()
     try:
-        # 0..11 scale on UIFlow1. 6 is comfortable; 100 silently clips to silence.
         speaker.setVolume(6)
     except:
         pass
-
-    # Pre-beep — if you hear this but not the WAV, the WAV format / playWAV
-    # signature is the issue. If you hear NEITHER, volume / speaker init is.
-    try:
-        speaker.playTone(880, 150)
-        time.sleep(0.25)
-    except Exception as e:
-        print("pre-beep failed:", e)
 
     # Estimate WAV duration so we can sleep through async playback.
     try:
@@ -326,19 +337,35 @@ def play_wav_file(wav_path):
     if est_secs > 30:
         est_secs = 30  # safety cap
 
-    variants = (
+    # Pull format constants off the speaker module. Firmware exposes
+    # F16B / F24B / F32B for bit depth and CHN_L / CHN_R / CHN_LR for channel.
+    F16B  = getattr(speaker, "F16B",  16)
+    CHN_L = getattr(speaker, "CHN_L", 0)
+
+    # Pre-load raw PCM once so every playRaw variant uses the same bytes.
+    pcm = _load_pcm_from_wav(wav_path)
+    pcm_len = len(pcm) if pcm else 0
+    print("PCM extracted:", pcm_len, "bytes")
+
+    variants = []
+    if pcm:
+        variants.extend([
+            ("playRaw-kw",    lambda p: speaker.playRaw(pcm, rate=WAV_RATE,
+                                                        bits=F16B, channels=CHN_L)),
+            ("playRaw-pos",   lambda p: speaker.playRaw(pcm, WAV_RATE, F16B, CHN_L)),
+            ("playRaw-min",   lambda p: speaker.playRaw(pcm)),
+            ("playRaw-rate",  lambda p: speaker.playRaw(pcm, WAV_RATE)),
+        ])
+    variants.extend([
         ("playWAV-path",    lambda p: speaker.playWAV(p)),
-        ("playWav-path",    lambda p: speaker.playWav(p)),
-        ("playWavFile",     lambda p: speaker.playWavFile(p)),
-        ("play_wav-path",   lambda p: speaker.play_wav(p)),
         ("playWAV-rate-kw", lambda p: speaker.playWAV(p, rate=WAV_RATE)),
-        ("playWAV-pos",     lambda p: speaker.playWAV(p, WAV_RATE, WAV_BITS)),
-    )
+    ])
+
     last_err = "no variant tried"
     for label, fn in variants:
         try:
-            show("Playing WAV", label, wav_path)
-            print("playWAV variant:", label, "est_secs:", est_secs)
+            show("Playing", label, wav_path)
+            print("variant:", label, "est_secs:", est_secs)
             fn(wav_path)
             # Block while async playback drains.
             time.sleep(est_secs + 0.5)
@@ -350,8 +377,11 @@ def play_wav_file(wav_path):
             last_err = "{0} missing: {1}".format(label, e)
             print(last_err)
         except Exception as e:
-            print("playWAV non-TypeError:", e)
-            return False, "{0}: {1}".format(label, e)
+            print("play non-TypeError:", e)
+            last_err = "{0}: {1}".format(label, e)
+            # Keep trying the next variant rather than bailing — different
+            # variants raise different errors on this firmware.
+            continue
     return False, last_err
 
 # -------------------------------------------------------------------
@@ -438,12 +468,39 @@ def test_ask_then_tts():
     show_idle()
 
 # -------------------------------------------------------------------
+# Show every public method on the speaker module on the LCD. We need
+# to know what's available (playWAV / playMp3 / playWavFile / etc.) to
+# pick the right play API for this firmware build, but `print(dir())`
+# only goes to the serial console — this dumps it to the screen so we
+# can read it off the device.
+# -------------------------------------------------------------------
+def show_speaker_dir():
+    try:
+        attrs = [a for a in dir(speaker) if not a.startswith("_")]
+    except Exception as e:
+        attrs = ["err:" + str(e)[:30]]
+    print("speaker dir:", attrs)
+    blob = ",".join(attrs)
+    lcd.clear()
+    lcd.setCursor(5, 5);  lcd.setColor(0xFFFFFF); lcd.print("speaker methods:")
+    y = 30
+    # ~38 chars/line at default font.
+    for i in range(0, len(blob), 38):
+        lcd.setCursor(5, y); lcd.setColor(0x00FFCC); lcd.print(blob[i:i+38])
+        y += 22
+        if y > 220:
+            break
+    time.sleep(8)  # long enough to read or photograph
+
+# -------------------------------------------------------------------
 # Main
 # -------------------------------------------------------------------
 _sd_ok = mount_sd()
 show("SD: " + ("mounted /sd" if _sd_ok else "not mounted"),
      "WAV will use " + ("/sd" if _sd_ok else "/flash"), "")
 time.sleep(1)
+
+show_speaker_dir()
 
 if ensure_wifi():
     show_idle()

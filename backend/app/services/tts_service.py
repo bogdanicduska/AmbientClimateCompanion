@@ -51,43 +51,39 @@ def resolve_text(text: Optional[str], template: Optional[str]) -> str:
 
 SUPPORTED_TTS_FORMATS = {"mp3", "wav", "opus", "aac", "flac", "pcm"}
 
-# M5Stack Core2 UIFlow1 `speaker.playWAV` only decodes 16 kHz / 8-bit unsigned mono
-# reliably on this firmware build. Higher rates / 16-bit samples download cleanly
-# (the WAV is valid, the file lands on /sd, RIFF header parses) but playback is
-# silent — confirmed empirically against the device after format-roundtripping.
-# Do NOT bump these without re-testing audio on the actual unit.
+# M5Stack Core2 UIFlow1 firmware exposes:
+#   speaker.playRaw(pcm, rate, bits, channels)  with bits in {F16B, F24B, F32B}
+#   speaker.playWAV(path)                       same supported widths
+# There is NO F8B constant, so 8-bit PCM is rejected as "data format is not
+# valid". The smallest decodable shape is 16-bit signed mono. We pick 16 kHz
+# because it's plenty for speech and keeps the file ~100 KB for a 3 s clip
+# (44.1 kHz pushed past 270 KB and was unreliable to load on this firmware).
 M5STACK_RATE     = 16000
-M5STACK_BITS     = 8
+M5STACK_BITS     = 16
 M5STACK_CHANNELS = 1
 
 
 def convert_wav_for_m5stack(wav_bytes: bytes) -> bytes:
-    """Re-encode a WAV (any rate / channel count from OpenAI TTS) into the only
-    PCM shape M5Stack Core2 UIFlow1 speaker.playWAV decodes reliably:
-    16 kHz / 8-bit *unsigned* / mono RIFF/WAVE."""
+    """Re-encode a WAV (any rate / channel count from OpenAI TTS) into the
+    PCM shape M5Stack Core2 UIFlow1 decodes via speaker.playRaw / playWAV:
+    16 kHz / 16-bit signed / mono RIFF/WAVE."""
     with wave.open(io.BytesIO(wav_bytes), "rb") as src:
         src_rate     = src.getframerate()
         src_channels = src.getnchannels()
         src_width    = src.getsampwidth()
         frames       = src.readframes(src.getnframes())
 
-    target_width = M5STACK_BITS // 8  # 1 byte per sample
+    target_width = M5STACK_BITS // 8  # 2 bytes per sample
 
     if src_channels == 2:
         frames = audioop.tomono(frames, src_width, 0.5, 0.5)
 
-    # Resample at the source bit-depth (audioop.ratecv needs ≥2-byte width to
-    # filter cleanly — going to 8-bit first then resampling produces aliasing).
-    if src_rate != M5STACK_RATE:
-        frames, _ = audioop.ratecv(frames, src_width, 1, src_rate, M5STACK_RATE, None)
-
-    # Convert to 8-bit signed, then offset by 128 — the WAV format spec stores
-    # 8-bit PCM as *unsigned* (0..255, with 128 as silence). audioop.lin2lin
-    # outputs signed bytes; we shift them into the unsigned range.
     if src_width != target_width:
         frames = audioop.lin2lin(frames, src_width, target_width)
-    if target_width == 1:
-        frames = bytes((b + 128) & 0xFF for b in frames)
+        src_width = target_width
+
+    if src_rate != M5STACK_RATE:
+        frames, _ = audioop.ratecv(frames, src_width, 1, src_rate, M5STACK_RATE, None)
 
     out = io.BytesIO()
     with wave.open(out, "wb") as dst:

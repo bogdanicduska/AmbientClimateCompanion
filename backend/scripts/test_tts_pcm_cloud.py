@@ -38,7 +38,7 @@ def pcm_to_wav(pcm_bytes: bytes, sample_rate: int, bits: int, channels: int) -> 
     )
 
 
-print(f"POST {BASE}/speech/tts?raw=1&profile=m5stack  (format=wav, 16 kHz / 8-bit / mono)")
+print(f"POST {BASE}/speech/tts?raw=1&profile=m5stack  (format=wav, 16 kHz / 16-bit signed / mono)")
 r = requests.post(
     f"{BASE}/speech/tts?raw=1&profile=m5stack",
     json={"device_id": DEVICE_ID, "text": TEXT, "format": "wav"},
@@ -50,7 +50,7 @@ r.raise_for_status()
 
 ctype = r.headers.get("Content-Type", "")
 rate  = int(r.headers.get("X-Sample-Rate", 16000))
-bits  = int(r.headers.get("X-Bit-Depth",   8))
+bits  = int(r.headers.get("X-Bit-Depth",   16))
 chans = int(r.headers.get("X-Channels",    1))
 enc   = r.headers.get("X-Encoding", "")
 spoken = r.headers.get("X-Spoken-Text", "")
