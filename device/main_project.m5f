@@ -505,11 +505,18 @@ def compute_room_metrics():
 # AQ helpers
 # -------------------------------------------------------
 def aq_status(tvoc_val):
-    if tvoc_val is None:          return "N/A",      0x444444
-    if tvoc_val < 100:            return "GOOD",     0x006633
-    if tvoc_val < AQ_POOR_THRESHOLD:  return "MODERATE", 0x886600
-    if tvoc_val < AQ_HAZARD_THRESHOLD: return "POOR",   0xAA4400
+    if tvoc_val is None:               return "N/A",       0x444444
+    if tvoc_val < 100:                 return "GOOD",      0x006633
+    if tvoc_val < AQ_POOR_THRESHOLD:   return "MODERATE",  0x886600
+    if tvoc_val < AQ_HAZARD_THRESHOLD: return "POOR",      0xAA4400
     return "HAZARDOUS", 0xAA0000
+
+def aq_display_label(tvoc_val):
+    if tvoc_val is None:               return "N/A",  0x444444
+    if tvoc_val < 100:                 return "GOOD", 0x006633
+    if tvoc_val < AQ_POOR_THRESHOLD:   return "MOD",  0x886600
+    if tvoc_val < AQ_HAZARD_THRESHOLD: return "POOR", 0xAA4400
+    return "HAZ", 0xAA0000
 
 # -------------------------------------------------------
 # UI  —  WHOOP-for-Room dashboard layout
@@ -782,10 +789,9 @@ def update_climate_tile():
 
 def update_air_tile():
     lcd.font(lcd.FONT_DejaVu18)
-    aq_label, aq_color = aq_status(last_tvoc)
-    aq_ppb = (" " + str(int(last_tvoc))) if last_tvoc is not None else ""
+    aq_label, aq_color = aq_display_label(last_tvoc)
     lcd.rect(202, 109, 116, 22, CARD_AQ, CARD_AQ)
-    lcd.print(aq_label + aq_ppb, 206, 111, aq_color)
+    lcd.print(aq_label, 206, 111, aq_color)
     lcd.rect(202, 132, 116, 22, CARD_AQ, CARD_AQ)
     lcd.print("CO2 " + (str(int(last_eco2)) if last_eco2 is not None else "---"), 206, 134, 0xFFCC99)
     r_text, r_color = rhythm_label()
@@ -809,43 +815,43 @@ def get_coach_data():
 
     # 1 — Ventilate
     if (air_strain is not None and air_strain >= 60) or room_state == "Heavy":
-        return ("VENTILATE", "Air feels heavy", 0xFFD84D, "wind",
-                ["Air strain rising",
-                 "Room feels heavy"],
-                "Open window 3 min")
+        return ("VENTILATE", "Fresh Air Ritual", 0xFFD84D, "wind",
+                ["Open a window now",
+                 "Take 5 deep breaths"],
+                "Done in 3 min", "DO THIS")
 
     # 2 — Dryness
     if (last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD) \
             or room_state == "Dry":
         hum_str = str(int(last_humidity)) + "%" if last_humidity is not None else "--"
-        return ("BREAK", "Dry room - reset now", 0xFFB347, "drop",
-                ["Humidity low: " + hum_str,
-                 "Comfort may drop"],
-                "Drink water and reset")
+        return ("BREAK", "Hydrate + Reset", 0xFFB347, "drop",
+                ["Drink a glass of water",
+                 "Humidity low: " + hum_str],
+                "Quick reset", "DO THIS")
 
     # 3 — Offline
     if network_state == "offline":
         return ("OFFLINE", "Last data shown", 0x78A6FF, "pause",
                 ["Local data available",
                  "Cloud updates paused"],
-                None)
+                None, "STATUS")
 
     # 4 — Recovery-friendly evening
     if _is_evening() and recovery_score is not None and recovery_score >= 75 \
             and room_state in ("Calm", "Sleep-Friendly"):
-        return ("RECOVER", "Good for winding down", 0x6FE8FF, "moon",
-                ["Recovery score high",
-                 "Room is calm"],
-                "Rest well tonight")
+        return ("RECOVER", "Wind-Down Ritual", 0x6FE8FF, "moon",
+                ["Dim the lights",
+                 "Sit quietly for 2 min"],
+                "Rest well tonight", "DO THIS")
 
     # 5 — Calm focus
     if room_readiness is not None and room_readiness >= 75 \
             and air_strain is not None and air_strain < 40 \
             and room_state in ("Fresh", "Calm"):
-        return ("FOCUS", "Room supports focus", 0x7CFF7A, "arrow",
-                ["Readiness is high",
-                 "Air strain is low"],
-                "Good time to focus")
+        return ("FOCUS", "Focus Ritual", 0x7CFF7A, "arrow",
+                ["Clear your space",
+                 "Start a 20 min block"],
+                "Good time to focus", "DO THIS")
 
     # 6 — Go outside (mild weather, daytime, inactive room)
     _wx = (outdoor_desc or "").lower()
@@ -854,16 +860,16 @@ def get_coach_data():
     _no_motion = last_motion_trigger_time is None or (now - last_motion_trigger_time) >= 600
     if _wx_ok and not _is_evening() and _no_motion \
             and room_state not in ("Heavy", "Dry"):
-        return ("OUTSIDE", "Mild weather outside", 0x7CFF7A, "leaf",
-                ["Weather looks mild",
-                 "No recent activity"],
-                "Take 5 min outside")
+        return ("OUTSIDE", "Outdoor Break", 0x7CFF7A, "leaf",
+                ["Step outside briefly",
+                 "Weather is mild now"],
+                "5 min outside helps", "DO THIS")
 
     # 7 — 3-minute reset (default)
-    return ("RESET", "Room is quiet now", 0x6FE8FF, "pause",
-            ["Room feels fresh",
-             "Good time to reset"],
-            "Sit, breathe, reset")
+    return ("RESET", "Reset Ritual", 0x6FE8FF, "pause",
+            ["Sit and breathe slowly",
+             "3 min is enough"],
+            "Sit, breathe, reset", "DO THIS")
 
 
 def _draw_coach_icon(icon_type, x, y, bg):
@@ -908,20 +914,20 @@ def draw_page2_frame():
 
 
 def update_page2():
-    action, subtitle, action_color, icon_type, reasons, footer = get_coach_data()
+    action, subtitle, action_color, icon_type, reasons, footer, section_label = get_coach_data()
     lcd.font(lcd.FONT_DejaVu18)
 
     # Hero card  y=24..92
     lcd.rect(6, 24, 308, 68, P2_HERO, P2_HERO)
     lcd.font(lcd.FONT_DejaVu40)
-    lcd.print(action, 12, 28, 0xFFD36A)
+    lcd.print(action, 12, 28, action_color)
     _draw_coach_icon(icon_type, 12, 68, P2_HERO)
     lcd.font(lcd.FONT_DejaVu18)
     lcd.print(subtitle, 36, 70, 0xF4F7FF)
 
-    # WHY card  y=98..145
+    # WHY / DO THIS / STATUS card  y=98..145
     lcd.rect(6, 98, 308, 47, P2_WHY, P2_WHY)
-    lcd.print("WHY", 14, 101, 0x4A7AA8)
+    lcd.print(section_label, 14, 101, 0x4A7AA8)
     y_r = 118
     for r in reasons[:2]:
         lcd.print(r, 14, y_r, 0xFFFFFF)
