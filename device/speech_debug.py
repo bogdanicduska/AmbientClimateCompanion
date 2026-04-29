@@ -3,7 +3,7 @@
 # Step by step debug version for Core2 speech.
 #
 # Buttons (each handler is re-entry guarded):
-#   A = 2 short tones (verifies firmware speaker)
+#   A = Record + STT — record mic → /speech/stt → display transcription
 #   B = TTS only — cycles through TEST_TEXTS, plays each via speaker.playWAV
 #   C = Voice ASK — record mic → /speech/stt → /speech/ask → /speech/tts → play
 #       (the real voice loop the project spec asks for)
@@ -13,15 +13,21 @@
 # binding at the bottom of this file from test_voice_ask to test_ask_then_tts.
 #
 # Notes:
+# - Mic uses MicrophonePDM (Core2 built-in PDM mic, WS=0 / DATA=34, 16 kHz
+#   16-bit mono). The PDM mic and speaker share the I2S0 peripheral on the
+#   Core2, so we MUST init the mic only when recording and release it again
+#   before doing any speaker.playWAV — leaving MIC.begin() active across a
+#   playback causes the device to reset when the speaker DMA completes.
 # - We do NOT import machine.I2S at module load on this firmware. Doing so
 #   locks the I2S peripheral and speaker.playTone hangs.
-# - WAV files are 44.1 kHz / 16-bit / mono — same shape as the working
-#   /sd/test.wav in main_project.m5f. Saved to /sd/ if mounted, else /flash.
+# - Outgoing WAVs (recorded) and incoming WAVs (TTS) are both 16 kHz / 16-bit
+#   mono, saved to /sd/ if mounted, else /flash.
 # -------------------------------------------------------------------
 
-from m5stack import lcd, btnA, btnB, btnC, speaker, mic
+from m5stack import lcd, btnA, btnB, btnC, speaker
 from m5ui import *
 from uiflow import *
+import MicrophonePDM as MIC
 import network
 import urequests
 import ujson
@@ -72,7 +78,7 @@ _ask_idx = 0
 # Backend ?profile=m5stack returns 16 kHz / 16-bit signed / mono. UIFlow1's
 # speaker module on this firmware exposes constants F16B / F24B / F32B for
 # bit depth — there is no F8B, so 8-bit is rejected as "data format is not
-# valid". 16 kHz keeps a 3 s clip ~100 KB which playRaw / playWAV can load.
+# valid". 16 kHz keeps a 3 s clip ~100 KB which playWAV can stream from disk.
 # The fmt chunk read off /sd/answer.wav after download MUST show
 # "PCM 16000Hz 16b ch1" for playback to work.
 WAV_RATE = 16000
@@ -80,14 +86,21 @@ WAV_BITS = 16
 
 WAV_PATHS = ("/sd/answer.wav", "/flash/answer.wav")
 
-# Microphone recording config — kept SHORT because the mic.record2file output
-# becomes a base64 JSON body that urequests buffers in RAM. ESP32 heap on this
-# firmware is around 110 KB, so we have to stay well under that.
+# Microphone recording config — kept SHORT because the recorded WAV gets
+# base64-wrapped into a JSON body that urequests buffers in RAM. ESP32 heap on
+# this firmware is around 110 KB, so we have to stay well under that.
 #   2 s @ 16 kHz / 16-bit / mono = 64 KB raw → ~85 KB base64
-# If we still OOM on upload, drop RECORD_RATE to 8000 (32 KB raw → 43 KB b64).
+# If we OOM on upload, drop RECORD_RATE to 8000 (32 KB raw → 43 KB b64).
 RECORD_PATH    = "/sd/question.wav"
 RECORD_SECONDS = 2
 RECORD_RATE    = 16000
+
+# PDM mic pins on M5Stack Core2: WS=0, DATA=34. buffer_length_ms must be >=
+# the longest recording we'll make (give headroom). Initialised once at boot.
+MIC_WS_PIN     = 0
+MIC_DATA_PIN   = 34
+MIC_BUF_MS     = 5000
+MIC_BLOCK_MS   = 100
 
 # -------------------------------------------------------------------
 # Re-entry guard — capacitive touch buttons can self-trigger from speaker
@@ -123,7 +136,7 @@ def show(line1="", line2="", line3="", c1=0xFFFFFF, c2=0x00FFCC, c3=0xAAAAAA):
         lcd.setCursor(5, 80); lcd.setColor(c3); lcd.print(line3[:38])
 
 def show_idle():
-    show("Speech Debug", "A tone   B tts   C ask", "")
+    show("Speech Debug", "A stt   B tts   C ask", "")
 
 def _auth_headers():
     return {
@@ -192,67 +205,7 @@ def ensure_wifi():
     return False
 
 # -------------------------------------------------------------------
-# WAV inspector — read the saved file's RIFF/fmt chunk and return
-# (is_riff_ok, "rate=44100 bits=16 ch=1 fmt=PCM size=277408"). If
-# the firmware silently rejects the WAV, this tells us *exactly*
-# what format the file actually has on disk vs what we expected.
-# -------------------------------------------------------------------
-def _inspect_wav(path):
-    try:
-        with open(path, "rb") as f:
-            head = f.read(12)
-            if len(head) < 12 or head[0:4] != b"RIFF" or head[8:12] != b"WAVE":
-                return False, "no RIFF/WAVE"
-            # Walk chunks looking for "fmt ". Skip everything else.
-            while True:
-                chunk_hdr = f.read(8)
-                if len(chunk_hdr) < 8:
-                    return True, "no fmt chunk"
-                cid = chunk_hdr[0:4]
-                csize = (chunk_hdr[4] | (chunk_hdr[5] << 8)
-                         | (chunk_hdr[6] << 16) | (chunk_hdr[7] << 24))
-                body = f.read(csize)
-                if cid == b"fmt ":
-                    if len(body) < 16:
-                        return True, "fmt too short"
-                    fmt_code = body[0] | (body[1] << 8)
-                    nchan    = body[2] | (body[3] << 8)
-                    rate     = (body[4] | (body[5] << 8)
-                                | (body[6] << 16) | (body[7] << 24))
-                    bits     = body[14] | (body[15] << 8)
-                    fmt_name = {1: "PCM", 3: "FLOAT", 0xFFFE: "EXT"}.get(fmt_code, str(fmt_code))
-                    return True, "{0} {1}Hz {2}b ch{3}".format(fmt_name, rate, bits, nchan)
-    except Exception as e:
-        return False, "read err: " + str(e)[:25]
-
-# -------------------------------------------------------------------
-# Tone test — known-good baseline. 3 short beeps, then if /sd/test.wav
-# exists, attempt to play it. main_project.m5f confirmed test.wav plays
-# on this firmware — so if we hear it here, speaker.playWAV is fine and
-# the TTS-WAV silence is a backend-format issue. If we don't, the issue
-# is the playWAV call signature itself.
-# -------------------------------------------------------------------
-def test_tone():
-    show("Tone test", "2 short beeps", "")
-    try:
-        try:
-            speaker.setVolume(4)  # quieter — speaker vibration was retriggering capA
-        except:
-            pass
-        # 2 brief tones, ~0.6s total. Keeps the handler short so the touch
-        # button has less chance to self-trigger from speaker vibration.
-        speaker.playTone(440, 120)
-        time.sleep(0.18)
-        speaker.playTone(660, 120)
-        time.sleep(0.5)  # silent cooldown — settles capacitive touch noise
-        show("Tone OK", "Heard 2 beeps?", "")
-    except Exception as e:
-        show("Tone error", str(e)[:35], "")
-    time.sleep(1)
-    show_idle()
-
-# -------------------------------------------------------------------
-# Fetch the WAV — backend ?profile=m5stack returns 44.1 kHz / 16-bit / mono.
+# Fetch the WAV — backend ?profile=m5stack returns 16 kHz / 16-bit / mono.
 # -------------------------------------------------------------------
 def fetch_tts_wav(text):
     try:
@@ -287,21 +240,15 @@ def fetch_tts_wav(text):
                 with open(candidate, "wb") as f:
                     f.write(content)
                 size = len(content) if content else 0
-                hdr_ok, fmt_info = _inspect_wav(candidate)
-                print("WAV saved:", candidate, "size:", size,
-                      "hdr_ok:", hdr_ok, "fmt:", fmt_info)
-                if hdr_ok:
-                    show("WAV saved",
-                         "size " + str(size),
-                         fmt_info)
-                else:
-                    show("WAV saved",
-                         "BAD HDR " + str(size),
-                         fmt_info)
+                print("WAV saved:", candidate, "size:", size)
+                # Drop the in-memory copy ASAP — we already wrote it to disk
+                # and playWAV will stream from the file. Holding ~50-100 KB of
+                # WAV bytes alive across playback fragments the heap and the
+                # device resets when async DMA cleanup tries to allocate.
+                del content
                 gc.collect()
-                time.sleep(2)
-                if not hdr_ok:
-                    return False, "bad WAV header at " + candidate
+                show("WAV saved", "size " + str(size), candidate)
+                time.sleep(1)
                 return True, candidate
             except Exception as e:
                 last_err = "{0}: {1}".format(candidate, e)
@@ -313,53 +260,20 @@ def fetch_tts_wav(text):
         return False, str(e)
 
 # -------------------------------------------------------------------
-# Playback — uses speaker.playRaw with explicit format constants
-# (F16B / CHN_L) which is the bypass-the-WAV-parser API exposed by this
-# firmware. We strip the RIFF header to get raw PCM bytes and hand them
-# directly to playRaw. playWAV is kept as a final fallback.
+# Playback — minimal. Mirrors the standalone player script exactly:
+#     speaker.playWAV(path, rate=16000, data_format=speaker.F16B,
+#                      channel=speaker.CHN_R, volume=3)
+#     wait_ms(<duration>)
+# We deliberately do NOT pre-read the WAV into a Python bytes object — that
+# previously held ~100 KB live across async DMA playback, fragmenting the
+# heap and causing the device to reset right after playback finished.
 #
-# IMPORTANT: playRaw / playWAV are asynchronous. We sleep through the
-# estimated clip duration so the next press doesn't cut the buffer.
+# Volume kept at 3 (matches the working player). Pushing to 6 measurably
+# increases the chance of a brownout reset on USB power.
 # -------------------------------------------------------------------
-_speaker_dir_logged = False
-
-def _log_speaker_methods():
-    global _speaker_dir_logged
-    if _speaker_dir_logged:
-        return
-    _speaker_dir_logged = True
-    try:
-        attrs = [a for a in dir(speaker) if not a.startswith("_")]
-        print("speaker dir:", attrs)
-    except Exception as e:
-        print("speaker dir failed:", e)
-
-def _load_pcm_from_wav(path):
-    """Walk RIFF chunks and return the raw PCM bytes from the data chunk
-    (and total bytes). Without this, OpenAI WAVs sometimes carry a LIST/INFO
-    chunk before data, so a naive "skip 44 bytes" assumption misaligns audio."""
-    with open(path, "rb") as f:
-        head = f.read(12)
-        if len(head) < 12 or head[0:4] != b"RIFF" or head[8:12] != b"WAVE":
-            return None
-        while True:
-            chunk_hdr = f.read(8)
-            if len(chunk_hdr) < 8:
-                return None
-            cid = chunk_hdr[0:4]
-            csize = (chunk_hdr[4] | (chunk_hdr[5] << 8)
-                     | (chunk_hdr[6] << 16) | (chunk_hdr[7] << 24))
-            if cid == b"data":
-                return f.read(csize)
-            f.read(csize)  # skip non-data chunk
-
-# Volume range on this firmware — empirically 0..11 for setVolume, 0..6 for the
-# inline `volume=` kwarg on playWAV. Keep these in one place for easy tweaking.
-PLAY_VOLUME = 6
+PLAY_VOLUME = 3
 
 def play_wav_file(wav_path):
-    _log_speaker_methods()
-
     # Estimate WAV duration so we can sleep through async playback.
     try:
         wav_size = uos.stat(wav_path)[6]
@@ -368,65 +282,32 @@ def play_wav_file(wav_path):
     bytes_per_sec = WAV_RATE * (WAV_BITS // 8)  # mono
     est_secs = max(1.0, (wav_size - 44) / float(bytes_per_sec)) if wav_size else 3.0
     if est_secs > 30:
-        est_secs = 30  # safety cap
+        est_secs = 30
 
-    # Format constants exposed by the speaker module on UIFlow1 firmware.
-    # IMPORTANT: kwarg names are `data_format=` and `channel=` (singular) —
-    # NOT `bits=` / `channels=`. Wrong kwargs raise TypeError silently.
-    F16B  = getattr(speaker, "F16B",  16)
-    CHN_R = getattr(speaker, "CHN_R", 1)
-    CHN_L = getattr(speaker, "CHN_L", 0)
+    # Free heap before kicking off async DMA — fewer allocations during the
+    # speaker IRQ path means lower chance of a panic during DMA cleanup.
+    gc.collect()
 
-    # Pre-load raw PCM bytes once so playRaw fallbacks use the same buffer.
-    pcm = _load_pcm_from_wav(wav_path)
-    pcm_len = len(pcm) if pcm else 0
-    print("PCM extracted:", pcm_len, "bytes")
-
-    # KNOWN-WORKING signature on M5Stack Core2 UIFlow1 (confirmed on device):
-    #     speaker.playWAV(path, rate=16000, data_format=speaker.F16B,
-    #                     channel=speaker.CHN_R, volume=6)
-    # Order: try the working signature first, then a left-channel variant,
-    # then progressively simpler fallbacks if firmware ever changes.
-    variants = [
-        ("playWAV-good-R",  lambda p: speaker.playWAV(p, rate=WAV_RATE,
-                                                       data_format=F16B,
-                                                       channel=CHN_R,
-                                                       volume=PLAY_VOLUME)),
-        ("playWAV-good-L",  lambda p: speaker.playWAV(p, rate=WAV_RATE,
-                                                       data_format=F16B,
-                                                       channel=CHN_L,
-                                                       volume=PLAY_VOLUME)),
-        ("playWAV-rate-kw", lambda p: speaker.playWAV(p, rate=WAV_RATE)),
-        ("playWAV-path",    lambda p: speaker.playWAV(p)),
-    ]
-    if pcm:
-        variants.append(
-            ("playRaw-good-R", lambda p: speaker.playRaw(pcm, rate=WAV_RATE,
-                                                          data_format=F16B,
-                                                          channel=CHN_R,
-                                                          volume=PLAY_VOLUME)),
+    show("Playing", wav_path, "")
+    try:
+        speaker.playWAV(
+            wav_path,
+            rate=WAV_RATE,
+            data_format=speaker.F16B,
+            channel=speaker.CHN_R,
+            volume=PLAY_VOLUME,
         )
+    except Exception as e:
+        print("playWAV error:", e)
+        return False, str(e)[:50]
 
-    last_err = "no variant tried"
-    for label, fn in variants:
-        try:
-            show("Playing", label, wav_path)
-            print("variant:", label, "est_secs:", est_secs)
-            fn(wav_path)
-            # Block while async playback drains.
-            time.sleep(est_secs + 0.5)
-            return True, label
-        except TypeError as e:
-            last_err = "{0} TypeError: {1}".format(label, e)
-            print(last_err)
-        except AttributeError as e:
-            last_err = "{0} missing: {1}".format(label, e)
-            print(last_err)
-        except Exception as e:
-            print("play non-TypeError:", e)
-            last_err = "{0}: {1}".format(label, e)
-            continue
-    return False, last_err
+    # Block while the async DMA drains. Use wait_ms (uiflow) to match the
+    # working player script exactly.
+    try:
+        wait_ms(int(est_secs * 1000) + 500)
+    except Exception:
+        time.sleep(est_secs + 0.5)
+    return True, "playWAV"
 
 # -------------------------------------------------------------------
 # TTS only test
@@ -453,47 +334,89 @@ def test_tts_only():
 
 # -------------------------------------------------------------------
 # Microphone — record audio from M5Stack Core2 built-in PDM mic to a WAV
-# file on /sd. UIFlow1 exposes only `mic.record2file` on this firmware
-# (we confirmed via dir(mic) probe). We don't know the exact kwarg names
-# yet, so we try the common variants and lock the first one that works.
+# file via MicrophonePDM. MIC.recordStart is asynchronous: it returns
+# immediately and writes audio in the background, so we sleep for the
+# recording duration plus a small margin before flushing/closing.
+# Confirmed working signature on UIFlow1:
+#     MIC.begin(pin_ws=0, pin_data=34, sample_rate_hz=16000,
+#               buffer_length_ms=5000, block_length_ms=100)
+#     MIC.recordStart(file_handle, duration_ms)
+# CRITICAL: the PDM mic and the speaker share I2S0. We must init the mic
+# right before recording and release it right after, otherwise the next
+# speaker.playWAV crashes the device when the DMA completes.
 # -------------------------------------------------------------------
+def _init_mic():
+    """Best-effort MIC.begin. Safe to call multiple times — if begin raises
+    because the peripheral is already bound, we ignore it and proceed."""
+    try:
+        MIC.begin(pin_ws=MIC_WS_PIN, pin_data=MIC_DATA_PIN,
+                  sample_rate_hz=RECORD_RATE,
+                  buffer_length_ms=MIC_BUF_MS,
+                  block_length_ms=MIC_BLOCK_MS)
+        print("MIC.begin OK")
+    except Exception as e:
+        print("MIC.begin warn:", e)
+
+def _release_mic():
+    """Release the I2S peripheral so speaker.playWAV can claim it. UIFlow1's
+    MicrophonePDM exposes the teardown under different names across builds, so
+    we probe for any of them."""
+    for name in ("recordStop", "end", "deinit", "stop"):
+        fn = getattr(MIC, name, None)
+        if fn is None:
+            continue
+        try:
+            fn()
+            print("MIC." + name + "() OK")
+        except Exception as e:
+            print("MIC." + name + " warn:", e)
+    # Small settle delay so the I2S driver finishes tearing down DMA before
+    # the speaker tries to bring it back up.
+    time.sleep(0.2)
+
 def record_question():
     show("Listening", "Speak now (" + str(RECORD_SECONDS) + "s)", RECORD_PATH)
 
-    variants = [
-        ("kw-second-rate",  lambda: mic.record2file(filename=RECORD_PATH,
-                                                     second=RECORD_SECONDS,
-                                                     rate=RECORD_RATE)),
-        ("kw-seconds-rate", lambda: mic.record2file(filename=RECORD_PATH,
-                                                     seconds=RECORD_SECONDS,
-                                                     rate=RECORD_RATE)),
-        ("pos-3arg",        lambda: mic.record2file(RECORD_PATH,
-                                                     RECORD_SECONDS,
-                                                     RECORD_RATE)),
-        ("pos-2arg",        lambda: mic.record2file(RECORD_PATH,
-                                                     RECORD_SECONDS)),
-        ("kw-second",       lambda: mic.record2file(filename=RECORD_PATH,
-                                                     second=RECORD_SECONDS)),
-        ("pos-1arg",        lambda: mic.record2file(RECORD_PATH)),
-    ]
+    # Wipe any previous recording so a failed write can't masquerade as success.
+    try:
+        uos.remove(RECORD_PATH)
+    except Exception:
+        pass
 
-    last_err = "no variant tried"
-    for label, fn in variants:
+    _init_mic()
+
+    f = None
+    try:
+        f = open(RECORD_PATH, "wb")
+        MIC.recordStart(f, RECORD_SECONDS * 1000)
+        # Wait through the async record + small margin for buffer drain.
+        time.sleep(RECORD_SECONDS + 1)
         try:
-            print("record variant:", label)
-            fn()
+            f.flush()
+        except Exception:
+            pass
+        f.close()
+        f = None
+
+        try:
+            size = uos.stat(RECORD_PATH)[6]
+        except Exception:
+            size = 0
+        if size <= 44:
+            _release_mic()
+            return False, "tiny file ({0} B)".format(size), size
+        _release_mic()
+        return True, "MicrophonePDM", size
+
+    except Exception as e:
+        if f is not None:
             try:
-                size = uos.stat(RECORD_PATH)[6]
+                f.close()
             except Exception:
-                size = 0
-            return True, label, size
-        except TypeError as e:
-            last_err = "{0} TypeError: {1}".format(label, e)
-            print(last_err)
-        except Exception as e:
-            print("record fail:", label, e)
-            return False, "{0}: {1}".format(label, e), 0
-    return False, last_err, 0
+                pass
+        _release_mic()
+        print("record fail:", e)
+        return False, str(e)[:60], 0
 
 # -------------------------------------------------------------------
 # Send the recorded WAV to the backend's /speech/stt endpoint and get
@@ -554,6 +477,31 @@ def transcribe_wav(wav_path):
     except Exception as e:
         print("STT error:", e)
         return False, str(e)[:60]
+
+# -------------------------------------------------------------------
+# Record + STT only — exercises the mic and /speech/stt endpoint without
+# the ask/TTS/playback stages. We do NOT play the recording back; the
+# whole point is to verify we can turn speech into text.
+# -------------------------------------------------------------------
+def test_record_stt():
+    ok, info, size = record_question()
+    if not ok:
+        show("Record failed", str(info)[:35], "")
+        time.sleep(3); show_idle(); return
+    show("Recorded", info[:35], "size " + str(size))
+    time.sleep(1)
+
+    ok, text = transcribe_wav(RECORD_PATH)
+    if not ok:
+        show("STT failed", str(text)[:35], "")
+        time.sleep(4); show_idle(); return
+    if not text:
+        show("STT empty", "no transcription", "try louder/closer")
+        time.sleep(4); show_idle(); return
+    print("STT text:", text)
+    show("You said", text[:38], "")
+    time.sleep(5)
+    show_idle()
 
 # -------------------------------------------------------------------
 # Voice ASK — the real loop the spec asks for:
@@ -690,90 +638,6 @@ def test_ask_then_tts():
     show_idle()
 
 # -------------------------------------------------------------------
-# Show every public method on the speaker module on the LCD. We need
-# to know what's available (playWAV / playMp3 / playWavFile / etc.) to
-# pick the right play API for this firmware build, but `print(dir())`
-# only goes to the serial console — this dumps it to the screen so we
-# can read it off the device.
-# -------------------------------------------------------------------
-def show_speaker_dir():
-    try:
-        attrs = [a for a in dir(speaker) if not a.startswith("_")]
-    except Exception as e:
-        attrs = ["err:" + str(e)[:30]]
-    print("speaker dir:", attrs)
-    blob = ",".join(attrs)
-    lcd.clear()
-    lcd.setCursor(5, 5);  lcd.setColor(0xFFFFFF); lcd.print("speaker methods:")
-    y = 30
-    # ~38 chars/line at default font.
-    for i in range(0, len(blob), 38):
-        lcd.setCursor(5, y); lcd.setColor(0x00FFCC); lcd.print(blob[i:i+38])
-        y += 22
-        if y > 220:
-            break
-    time.sleep(8)  # long enough to read or photograph
-
-# -------------------------------------------------------------------
-# Probe the firmware for a microphone API. UIFlow1 surfaces the Core2's
-# built-in PDM mic under different names depending on the build —
-# `microphone`, `mic`, `m5mic`, or attached to the `m5stack` module.
-# We try each candidate, catch every exception, and dump whatever we
-# find to the LCD so we can pick the correct record() signature without
-# needing a serial console.
-#
-# We deliberately do NOT try `from machine import I2S` here — that would
-# lock the speaker (per the existing comment at the top of this file).
-# -------------------------------------------------------------------
-def show_mic_dir():
-    candidates = []  # list of (label, attrs_list)
-
-    # Direct module imports
-    for mod_name in ("microphone", "mic", "m5mic"):
-        try:
-            mod = __import__(mod_name)
-            attrs = [a for a in dir(mod) if not a.startswith("_")]
-            candidates.append((mod_name, attrs))
-        except Exception as e:
-            print("mic probe", mod_name, "import failed:", e)
-
-    # Attributes hanging off m5stack (e.g. m5stack.mic)
-    try:
-        import m5stack as _m5
-        for sub in ("mic", "microphone", "Mic", "Microphone"):
-            obj = getattr(_m5, sub, None)
-            if obj is not None:
-                attrs = [a for a in dir(obj) if not a.startswith("_")]
-                candidates.append(("m5stack." + sub, attrs))
-    except Exception as e:
-        print("mic probe m5stack.* failed:", e)
-
-    print("mic candidates:", candidates)
-
-    lcd.clear()
-    lcd.setCursor(5, 5); lcd.setColor(0xFFFFFF); lcd.print("mic probe:")
-    y = 28
-    if not candidates:
-        lcd.setCursor(5, y); lcd.setColor(0xFF6666)
-        lcd.print("none found — no mic module")
-        time.sleep(8)
-        return
-
-    for label, attrs in candidates:
-        lcd.setCursor(5, y); lcd.setColor(0xFFFF66); lcd.print(label[:38])
-        y += 18
-        blob = ",".join(attrs) if attrs else "(empty)"
-        for i in range(0, len(blob), 38):
-            if y > 218:
-                break
-            lcd.setCursor(5, y); lcd.setColor(0x00FFCC); lcd.print(blob[i:i+38])
-            y += 16
-        y += 4
-        if y > 218:
-            break
-    time.sleep(10)
-
-# -------------------------------------------------------------------
 # Main
 # -------------------------------------------------------------------
 _sd_ok = mount_sd()
@@ -781,15 +645,17 @@ show("SD: " + ("mounted /sd" if _sd_ok else "not mounted"),
      "WAV will use " + ("/sd" if _sd_ok else "/flash"), "")
 time.sleep(1)
 
-show_speaker_dir()
-show_mic_dir()
+# Mic is NOT initialised at boot. record_question() calls _init_mic() right
+# before recording and _release_mic() right after, because the PDM mic and
+# speaker share I2S0 — leaving the mic active across a playWAV crashes the
+# device when the speaker DMA completes.
 
 if ensure_wifi():
     show_idle()
 else:
     show("No WiFi", "Fix config first", "")
 
-btnA.wasPressed(_guard(test_tone))
+btnA.wasPressed(_guard(test_record_stt))
 btnB.wasPressed(_guard(test_tts_only))
 btnC.wasPressed(_guard(test_voice_ask))
 
