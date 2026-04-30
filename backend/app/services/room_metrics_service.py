@@ -73,8 +73,12 @@ def enrich_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         **row,
+        # spec-aligned names (6.1 / 6.2 contract)
+        "readiness_score":  readiness,
+        "recovery_score":   recovery,
+        "air_strain_score": strain,
+        "room_state":       state,
+        # legacy aliases — kept so existing consumers don't break
         "room_readiness": readiness,
-        "recovery_score": recovery,
         "air_strain":     strain,
-        "room_state":     state,
     }

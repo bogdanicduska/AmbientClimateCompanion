@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 
 from app.services.events_service import store_device_event
 from app.services.bigquery_service import get_recent_events
+from app.services.event_enrichment import enrich_events
 from app.services.auth_service import is_valid_device_token
 from app.utils.validators import validate_event_payload
 from app.utils.logger import get_logger
@@ -23,8 +24,8 @@ def list_events():
         limit = 20
 
     try:
-        events = get_recent_events(device_id, current_app.config, limit=limit)
-        return jsonify({"success": True, "data": events}), 200
+        raw_events = get_recent_events(device_id, current_app.config, limit=limit)
+        return jsonify({"success": True, "data": enrich_events(raw_events)}), 200
     except Exception:
         current_app.logger.exception(f"Failed to fetch events for {device_id}")
         return jsonify({"success": False, "message": "Internal server error"}), 500
