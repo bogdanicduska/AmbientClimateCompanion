@@ -4,13 +4,24 @@ from typing import Any, Tuple, Optional
 REQUIRED_FIELDS = ("device_id", "indoor_temp", "indoor_humidity")
 
 VALID_EVENT_TYPES = {
+    # connectivity
+    "wifi_connected",
     "wifi_disconnected",
+    "wifi_failed",
+    # lifecycle
+    "room_online",
+    "room_state_restored",
     "cache_loaded",
+    "boot_recovered",
+    # telemetry
+    "room_synced",
+    "room_sync_failed",
+    # alerts
     "humidity_alert",
     "air_quality_alert",
-    "boot_recovered",
-    "announcement_spoken",
     "motion_triggered",
+    # speech
+    "announcement_spoken",
     "speech_query_received",
     "speech_summary_spoken",
 }

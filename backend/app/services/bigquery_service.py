@@ -163,6 +163,42 @@ def get_history_window(device_id: str, config, start_iso: str, end_iso: str) -> 
         raise
 
 
+def get_recent_events(device_id: str, config, limit: int = 20) -> List[Dict]:
+    """Return the most recent device events for a given device, descending by timestamp."""
+    client = get_bigquery_client()
+
+    query = f"""
+    SELECT device_id, event_type, timestamp, details, logged_at
+    FROM `{_events_table_ref(config)}`
+    WHERE device_id = @device_id
+    ORDER BY timestamp DESC
+    LIMIT @limit
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("device_id", "STRING", device_id),
+            bigquery.ScalarQueryParameter("limit",     "INT64",  limit),
+        ]
+    )
+
+    try:
+        rows = list(client.query(query, job_config=job_config).result())
+        return [
+            {
+                "device_id":  r.device_id,
+                "event_type": r.event_type,
+                "timestamp":  r.timestamp.isoformat() if r.timestamp else None,
+                "details":    r.details,
+                "logged_at":  r.logged_at.isoformat() if r.logged_at else None,
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        logger.error(f"BigQuery get_recent_events failed: {e}")
+        raise
+
+
 def get_recent_speech_events(device_id: str, event_type: str, config, hours: int) -> List[Dict]:
     """Return recent device_events rows for cooldown checks in the proactive service."""
     client = get_bigquery_client()
