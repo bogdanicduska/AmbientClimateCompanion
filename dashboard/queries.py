@@ -5,15 +5,20 @@ BACKEND_URL = os.environ.get(
     "BACKEND_URL",
     "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1",
 )
-DEVICE_ID = os.environ.get("DEVICE_ID", "m5stack-duska-home")
+DEFAULT_DEVICE_ID = os.environ.get("DEVICE_ID", "m5stack-duska-home")
+
+KNOWN_DEVICES = [
+    "m5stack-duska-home",
+    "m5stack-ana-home",
+]
 
 
-def fetch_latest() -> dict | None:
+def fetch_latest(device_id: str = DEFAULT_DEVICE_ID) -> dict | None:
     """Call GET /latest and return the enriched row, or None on failure."""
     try:
         r = requests.get(
             f"{BACKEND_URL}/latest",
-            params={"device_id": DEVICE_ID},
+            params={"device_id": device_id},
             timeout=8,
         )
         if r.status_code == 200:
@@ -24,12 +29,12 @@ def fetch_latest() -> dict | None:
         return None
 
 
-def fetch_events(limit: int = 20) -> list[dict]:
+def fetch_events(device_id: str = DEFAULT_DEVICE_ID, limit: int = 20) -> list[dict]:
     """Call GET /events and return recent device events."""
     try:
         r = requests.get(
             f"{BACKEND_URL}/events",
-            params={"device_id": DEVICE_ID, "limit": limit},
+            params={"device_id": device_id, "limit": limit},
             timeout=8,
         )
         if r.status_code == 200:
@@ -39,12 +44,12 @@ def fetch_events(limit: int = 20) -> list[dict]:
         return []
 
 
-def fetch_history(hours: int = 24) -> list[dict]:
+def fetch_history(device_id: str = DEFAULT_DEVICE_ID, hours: int = 24) -> list[dict]:
     """Call GET /history and return a list of enriched rows."""
     try:
         r = requests.get(
             f"{BACKEND_URL}/history",
-            params={"device_id": DEVICE_ID, "hours": hours},
+            params={"device_id": device_id, "hours": hours},
             timeout=10,
         )
         if r.status_code == 200:

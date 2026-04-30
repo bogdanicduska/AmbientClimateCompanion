@@ -37,38 +37,52 @@ def _score_label(value: int, low_good: bool) -> str:
 # ---------------------------------------------------------------------------
 # Hero metric card — full card with label, big number, bar, interpretation
 # ---------------------------------------------------------------------------
-def score_card(label: str, value: int | None, low_good: bool = False) -> None:
+def score_card(
+    label: str,
+    value: int | None,
+    low_good: bool = False,
+    explanation: str = "",
+    trend_arrow: str = "",
+    trend_label: str = "",
+    trend_color: str = "#556677",
+) -> None:
     if value is None:
-        st.markdown(
-            f"""<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;
-                            padding:20px;height:120px;display:flex;flex-direction:column;
-                            justify-content:center;">
-                  <div style="font-size:0.7rem;color:#3A5A7A;letter-spacing:0.12em;
-                              text-transform:uppercase;margin-bottom:8px;">{label}</div>
-                  <div style="font-size:2.4rem;font-weight:700;color:#334455;">—</div>
-                </div>""",
-            unsafe_allow_html=True,
+        html = (
+            '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
+            f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">{label}</div>'
+            '<div style="font-size:2.4rem;font-weight:700;color:#334455;">—</div>'
+            '</div>'
         )
+        st.markdown(html, unsafe_allow_html=True)
         return
 
-    color = _score_color(value, low_good)
+    color    = _score_color(value, low_good)
     sublabel = _score_label(value, low_good)
-    bar_pct = value
 
-    st.markdown(
-        f"""<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;
-                        padding:20px;height:120px;box-sizing:border-box;">
-              <div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;
-                          text-transform:uppercase;margin-bottom:6px;">{label}</div>
-              <div style="font-size:2.4rem;font-weight:700;color:{color};line-height:1.1;">{value}</div>
-              <div style="background:#111C2A;border-radius:3px;height:4px;margin:8px 0 6px;">
-                <div style="width:{bar_pct}%;max-width:100%;background:{color};
-                            height:4px;border-radius:3px;transition:width 0.3s;"></div>
-              </div>
-              <div style="font-size:0.75rem;color:#556677;">{sublabel}</div>
-            </div>""",
-        unsafe_allow_html=True,
+    trend_html = (
+        f'<span style="font-size:0.8rem;color:{trend_color};margin-left:10px;font-weight:600;">{trend_arrow} {trend_label}</span>'
+        if trend_arrow else ""
     )
+    expl_html = (
+        f'<div style="font-size:0.72rem;color:#3A5A6A;margin-top:6px;line-height:1.4;">{explanation}</div>'
+        if explanation else ""
+    )
+
+    html = (
+        '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
+        f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">{label}</div>'
+        f'<div style="display:flex;align-items:baseline;">'
+        f'<div style="font-size:2.4rem;font-weight:700;color:{color};line-height:1.1;">{value}</div>'
+        f'{trend_html}'
+        '</div>'
+        '<div style="background:#111C2A;border-radius:3px;height:4px;margin:8px 0 6px;">'
+        f'<div style="width:{value}%;max-width:100%;background:{color};height:4px;border-radius:3px;"></div>'
+        '</div>'
+        f'<div style="font-size:0.75rem;color:#556677;">{sublabel}</div>'
+        f'{expl_html}'
+        '</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -76,30 +90,24 @@ def score_card(label: str, value: int | None, low_good: bool = False) -> None:
 # ---------------------------------------------------------------------------
 def room_state_card(state: str | None) -> None:
     if not state or state == "---":
-        st.markdown(
-            """<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;
-                           padding:20px;height:120px;">
-                 <div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;
-                             text-transform:uppercase;margin-bottom:10px;">Room State</div>
-                 <div style="font-size:1.5rem;font-weight:700;color:#334455;">—</div>
-               </div>""",
-            unsafe_allow_html=True,
+        html = (
+            '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
+            '<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Room State</div>'
+            '<div style="font-size:1.5rem;font-weight:700;color:#334455;">—</div>'
+            '</div>'
         )
+        st.markdown(html, unsafe_allow_html=True)
         return
 
-    c = _STATE_COLORS.get(state, {"bg": "#0A1220", "border": "#1A2A3A",
-                                   "text": "#AAAAAA", "desc": ""})
-    st.markdown(
-        f"""<div style="background:{c['bg']};border:1px solid {c['border']};
-                        border-radius:12px;padding:20px;height:120px;box-sizing:border-box;">
-              <div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;
-                          text-transform:uppercase;margin-bottom:8px;">Room State</div>
-              <div style="font-size:1.6rem;font-weight:700;color:{c['text']};
-                          letter-spacing:0.06em;">{state}</div>
-              <div style="font-size:0.75rem;color:#445566;margin-top:6px;">{c['desc']}</div>
-            </div>""",
-        unsafe_allow_html=True,
+    c = _STATE_COLORS.get(state, {"bg": "#0A1220", "border": "#1A2A3A", "text": "#AAAAAA", "desc": ""})
+    html = (
+        f'<div style="background:{c["bg"]};border:1px solid {c["border"]};border-radius:12px;padding:20px;">'
+        '<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Room State</div>'
+        f'<div style="font-size:1.6rem;font-weight:700;color:{c["text"]};letter-spacing:0.06em;">{state}</div>'
+        f'<div style="font-size:0.75rem;color:#445566;margin-top:6px;">{c["desc"]}</div>'
+        '</div>'
     )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +145,85 @@ def sensor_row(label: str, value, unit: str = "", color: str = "#CCCCCC") -> Non
 # ---------------------------------------------------------------------------
 # Status pill — inline colored badge (LIVE / CACHE / OFFLINE etc.)
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Daily Room Story card
+# ---------------------------------------------------------------------------
+def story_card(sentences: list[str], window_label: str = "last 24 h") -> None:
+    if not sentences:
+        return
+
+    # Render markdown bold (**text**) in HTML
+    import re
+    def _md_bold(s: str) -> str:
+        return re.sub(r"\*\*(.+?)\*\*", r'<strong style="color:#AABBCC;">\1</strong>', s)
+
+    items_html = "".join(
+        f'<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #0F1A28;">'
+        f'<span style="color:#1E4A2A;font-size:0.9rem;margin-top:1px;">▸</span>'
+        f'<span style="color:#778899;font-size:0.84rem;line-height:1.5;">{_md_bold(s)}</span>'
+        f'</div>'
+        for s in sentences
+    )
+
+    st.markdown(
+        f"""<div style="background:#070F1A;border:1px solid #0F2030;border-radius:12px;padding:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;
+                          margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #0F1A28;">
+                <span style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.15em;
+                             text-transform:uppercase;">Daily Room Story</span>
+                <span style="font-size:0.7rem;color:#253545;">{window_label}</span>
+              </div>
+              {items_html}
+            </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Weather insight card (outdoor context + coaching suitability)
+# ---------------------------------------------------------------------------
+def weather_insight_card(row: dict, suitability: str) -> None:
+    o_temp  = row.get("outdoor_temp")
+    o_hum   = row.get("outdoor_humidity")
+    o_desc  = (row.get("outdoor_weather") or "—").title()
+
+    temp_str = f"{o_temp:.1f} °C" if o_temp is not None else "—"
+    hum_str  = f"{o_hum:.0f} %" if o_hum is not None else "—"
+
+    suit_color = (
+        "#3DFF8A" if "good" in suitability.lower() or "suitable" in suitability.lower() else
+        "#FF8844" if "unfavourable" in suitability.lower() or "cold" in suitability.lower() or "heat" in suitability.lower() else
+        "#FFCC00"
+    )
+
+    st.markdown(
+        f"""<div style="background:#070C18;border:1px solid #0F1E2E;border-radius:12px;padding:20px;">
+              <div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.15em;text-transform:uppercase;
+                          margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid #0F1A28;">
+                Outdoor Context
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:5px 0;">
+                <span style="color:#445566;font-size:0.8rem;">Conditions</span>
+                <span style="color:#AAAACC;font-weight:600;">{o_desc}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:5px 0;">
+                <span style="color:#445566;font-size:0.8rem;">Temperature</span>
+                <span style="color:#88CCFF;font-weight:600;">{temp_str}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:5px 0;
+                          border-bottom:1px solid #0F1A28;">
+                <span style="color:#445566;font-size:0.8rem;">Humidity</span>
+                <span style="color:#66AACC;font-weight:600;">{hum_str}</span>
+              </div>
+              <div style="margin-top:12px;padding:10px 12px;background:#0A1825;border-radius:8px;
+                          border-left:3px solid {suit_color};">
+                <span style="font-size:0.8rem;color:{suit_color};">{suitability}</span>
+              </div>
+            </div>""",
+        unsafe_allow_html=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Event panel
 # ---------------------------------------------------------------------------
