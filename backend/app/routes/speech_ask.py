@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request, current_app
 
 from app.services.ask_service import answer_question
 from app.services.auth_service import is_valid_device_token
+from app.services.pending_audio_service import enqueue as enqueue_audio
+from app.services.tts_service import synthesize_speech
 from app.utils.validators import validate_ask_payload
 from app.utils.logger import get_logger
 
@@ -27,7 +29,31 @@ def ask():
 
     try:
         result = answer_question(device_id, question, current_app.config)
-        return jsonify({"success": True, "data": result}), 200
     except Exception:
         current_app.logger.exception("ASK endpoint failed")
         return jsonify({"success": False, "message": "Internal server error"}), 500
+
+    # Synthesize the answer audio and enqueue it for the device's next proactive
+    # poll. Decouples the answer from this request's response so the device can
+    # release its mic peripheral before the speaker is asked to play — works
+    # around the M5Stack Core2 I2S0 mic↔speaker hardware conflict.
+    answer_text = (result.get("answer") or "").strip()
+    queued      = False
+    if answer_text:
+        try:
+            tts = synthesize_speech(answer_text, current_app.config, audio_format="wav")
+            enqueue_audio(device_id, {
+                "audio_bytes": tts["audio_bytes"],
+                "text":        answer_text,
+                "source":      "ask",
+                "trigger_id":  "ask_" + (result.get("intent") or "unknown"),
+            })
+            queued = True
+            logger.info(f"ASK queued audio for device={device_id} intent={result.get('intent')}")
+        except Exception:
+            current_app.logger.exception(f"ASK TTS/enqueue failed for device={device_id}")
+
+    return jsonify({
+        "success": True,
+        "data":    {**result, "queued": queued},
+    }), 200
