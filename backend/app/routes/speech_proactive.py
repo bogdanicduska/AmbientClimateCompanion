@@ -5,7 +5,7 @@ from flask import Blueprint, Response, jsonify, request, current_app
 from app.services.events_service import store_device_event
 from app.services.pending_audio_service import dequeue as dequeue_audio
 from app.services.proactive_service import evaluate_proactive
-from app.services.tts_service import synthesize_speech
+from app.services.tts_service import synthesize_speech, convert_wav_for_m5stack
 from app.utils.logger import get_logger
 
 speech_proactive_bp = Blueprint("speech_proactive", __name__)
@@ -104,6 +104,12 @@ def proactive():
     try:
         audio_format = "wav" if raw else "mp3"
         tts = synthesize_speech(trigger["text"], current_app.config, audio_format=audio_format)
+        # Re-encode WAV to the M5Stack profile (16 kHz / 16-bit / mono) — the
+        # device's playWAV rejects OpenAI's native 24 kHz output silently.
+        if raw:
+            tts_audio_bytes = convert_wav_for_m5stack(tts["audio_bytes"])
+        else:
+            tts_audio_bytes = tts["audio_bytes"]
     except Exception:
         current_app.logger.exception(f"Proactive TTS failed for trigger={trigger['trigger_id']}")
         return jsonify({"success": False, "message": "TTS failure"}), 500
@@ -128,7 +134,7 @@ def proactive():
 
     if raw:
         return _raw_response(
-            tts["audio_bytes"],
+            tts_audio_bytes,
             source="proactive",
             trigger_id=trigger["trigger_id"],
             text=trigger["text"],

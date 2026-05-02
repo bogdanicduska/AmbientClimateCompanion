@@ -1,0 +1,100 @@
+# -------------------------------------------------------------------
+# Python
+# -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# -------------------------------------------------------------------
+# Virtual environments
+# -------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# -------------------------------------------------------------------
+# Secrets and credentials  -- NEVER commit these
+# -------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+*-service-account.json
+service-account.json
+service_account.json
+*-credentials.json
+credentials.json
+gcloud-key*.json
+*.key.json
+*.pem
+secrets.toml
+.streamlit/secrets.toml
+
+# -------------------------------------------------------------------
+# IDE / editor
+# -------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# -------------------------------------------------------------------
+# OS junk
+# -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+Icon?
+
+# -------------------------------------------------------------------
+# Logs and runtime artefacts
+# -------------------------------------------------------------------
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# -------------------------------------------------------------------
+# Device / firmware build artefacts
+# -------------------------------------------------------------------
+*.mpy
+device/firmware/
+
+# -------------------------------------------------------------------
+# Backend script outputs and local scratch
+# -------------------------------------------------------------------
+backend/scripts/_out/
+*.wav
+*.mp3
+!device/test_assets/*.wav
+
+# -------------------------------------------------------------------
+# Node / dashboard build artefacts (if/when added)
+# -------------------------------------------------------------------
+node_modules/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
