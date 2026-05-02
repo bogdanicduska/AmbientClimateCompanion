@@ -27,6 +27,32 @@ def _weather_announcement_text(s: Dict[str, Any]) -> str:
     return base
 
 
+def _morning_briefing_text(s: Dict[str, Any]) -> str:
+    """Combined morning announcement: indoor temp + outdoor weather + umbrella heads-up."""
+    parts = ["Good morning."]
+    indoor = s.get("indoor_temp")
+    if indoor is not None:
+        parts.append(f"The room is {int(round(indoor))} degrees inside.")
+    outdoor = s.get("outdoor_temp")
+    weather = (s.get("outdoor_weather") or "").lower()
+    if outdoor is not None and weather:
+        parts.append(f"Outside it is {int(round(outdoor))} degrees with {weather}.")
+    elif outdoor is not None:
+        parts.append(f"Outside it is {int(round(outdoor))} degrees.")
+    if s.get("forecast_umbrella_today"):
+        parts.append("Bring an umbrella, rain is expected today.")
+    return " ".join(parts)
+
+
+def _window_open_invitation_text(s: Dict[str, Any]) -> str:
+    indoor  = s.get("indoor_temp")
+    outdoor = s.get("outdoor_temp")
+    if indoor is not None and outdoor is not None:
+        return (f"It is {int(round(outdoor))} outside and {int(round(indoor))} inside. "
+                "Opening a window would help cool the room.")
+    return "It is cooler outside than inside. Opening a window would help."
+
+
 PROACTIVE_TRIGGERS: List[Dict[str, Any]] = [
     # Urgent indoor conditions first
     {
@@ -42,12 +68,36 @@ PROACTIVE_TRIGGERS: List[Dict[str, Any]] = [
         "cooldown_hours": 3,
     },
 
+    # Morning briefing — combined temp + weather + umbrella, once per morning.
+    # 24h cooldown so it's truly the "first thing of the day" announcement.
+    # Listed before umbrella_morning so it wins when both would apply.
+    {
+        "id":             "morning_briefing",
+        "check":          lambda s, hour: 5 <= hour <= 8,
+        "text_fn":        _morning_briefing_text,
+        "cooldown_hours": 24,
+    },
+
     # Morning umbrella reminder — fires only in morning hours if rain is expected today
     {
         "id":             "umbrella_morning",
         "check":          lambda s, hour: s.get("forecast_umbrella_today") is True and 5 <= hour <= 10,
         "text":           "Rain is likely today. You may want to bring an umbrella.",
         "cooldown_hours": 6,
+    },
+
+    # Window-open invitation — when outdoor is meaningfully cooler than indoor
+    # AND not raining/storming. Daytime only (skip night windows). 4h cooldown.
+    {
+        "id":             "window_open_invitation",
+        "check":          lambda s, hour: (
+            (s.get("indoor_temp") or 0) - (s.get("outdoor_temp") or 100) >= 3
+            and not s.get("forecast_storm")
+            and "rain" not in (s.get("outdoor_weather") or "").lower()
+            and 9 <= hour <= 19
+        ),
+        "text_fn":        _window_open_invitation_text,
+        "cooldown_hours": 4,
     },
 
     # Evening recovery praise
@@ -127,6 +177,7 @@ def _snapshot_fields(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         "room_readiness":  snapshot.get("room_readiness"),
         "recovery_score":  snapshot.get("recovery_score"),
         "air_strain":      snapshot.get("air_strain"),
+        "indoor_temp":     snapshot.get("indoor_temp"),
         "indoor_humidity": snapshot.get("indoor_humidity"),
         "outdoor_temp":    snapshot.get("outdoor_temp"),
         "outdoor_weather": snapshot.get("outdoor_weather"),

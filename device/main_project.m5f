@@ -7,6 +7,7 @@ import socket
 import struct
 import machine
 import unit
+import gc
 
 setScreenColor(0x0D0D0D)
 
@@ -57,6 +58,129 @@ TVOC_POOR_MAX       = 200
 env3 = unit.get(unit.ENV3, unit.PORTC)
 pir  = unit.get(unit.PIR,  unit.PORTB)
 tvoc = unit.get(unit.TVOC, unit.PORTA)
+
+# -------------------------------------------------------
+# Proactive announcer — speaker-only (mic intentionally not used here).
+#
+# Polls /speech/proactive on PIR motion (immediate) and on a 5-minute idle
+# tick (catches scheduled triggers like umbrella_morning). The backend owns
+# all cooldown logic — the device just plays whatever the response contains.
+# A 204 response means "stay quiet, nothing to play."
+#
+# Quiet hours 23:00–07:00 local: no polling at all. Stops a midnight bathroom
+# trip from triggering "Outside it is 4 degrees with clear sky."
+# -------------------------------------------------------
+ANNOUNCE_BACKEND     = BACKEND_BASE_URL + "/speech/proactive"
+ANNOUNCE_PATH        = "/flash/announce.wav"
+ANNOUNCE_IDLE_POLL_S = 5 * 60     # idle poll cadence
+ANNOUNCE_DEBOUNCE_S  = 30         # ignore PIR re-fires within this window
+ANNOUNCE_QUIET_START = 23         # local hour
+ANNOUNCE_QUIET_END   = 7          # local hour
+ANNOUNCE_WAV_RATE    = 16000      # backend's m5stack profile produces this
+ANNOUNCE_VOLUME      = 6
+
+# Announcer state
+_ann_last_idle_poll   = 0
+_ann_last_motion_poll = 0
+_ann_motion_pending   = False
+
+
+def _ann_local_hour():
+    return (utime.localtime()[3] + TZ_OFFSET) % 24
+
+
+def _ann_is_quiet():
+    h = _ann_local_hour()
+    if ANNOUNCE_QUIET_START <= ANNOUNCE_QUIET_END:
+        return ANNOUNCE_QUIET_START <= h < ANNOUNCE_QUIET_END
+    return h >= ANNOUNCE_QUIET_START or h < ANNOUNCE_QUIET_END
+
+
+def _ann_do_poll():
+    """One-shot proactive poll → play returned WAV. All errors swallowed —
+    a backend hiccup or transient WiFi drop must never crash the main loop."""
+    try:
+        import urequests
+    except Exception as e:
+        print("announce: urequests import failed:", e)
+        return
+
+    try:
+        url = ANNOUNCE_BACKEND + "?device_id=" + DEVICE_ID + "&raw=1"
+        r = urequests.get(url, headers={"Authorization": "Bearer " + AUTH_TOKEN})
+        status = r.status_code
+
+        if status == 204:
+            r.close()
+            return
+
+        if status != 200:
+            r.close()
+            print("announce poll status:", status)
+            return
+
+        try:
+            content = r.content
+        except Exception as e:
+            r.close()
+            print("announce body read failed:", e)
+            return
+        r.close()
+
+        try:
+            with open(ANNOUNCE_PATH, "wb") as f:
+                f.write(content)
+        except Exception as e:
+            print("announce write failed:", e)
+            return
+        del content
+        gc.collect()
+
+        try:
+            speaker.playWAV(ANNOUNCE_PATH,
+                            rate=ANNOUNCE_WAV_RATE,
+                            data_format=speaker.F16B,
+                            channel=speaker.CHN_R,
+                            volume=ANNOUNCE_VOLUME)
+            print("announce played")
+        except Exception as e:
+            print("announce playWAV failed:", e)
+
+    except Exception as e:
+        print("announce poll error:", e)
+
+
+def announce_on_motion():
+    """Schedules an immediate poll on the next announce_tick(). Debounced so
+    PIR re-fires within 30 s don't all hit the network."""
+    global _ann_motion_pending
+    _ann_motion_pending = True
+
+
+def announce_tick():
+    """Call from the main loop every iteration. Cheap when nothing's due —
+    only issues a network call when the schedule or motion says so, never
+    during quiet hours."""
+    global _ann_last_idle_poll, _ann_last_motion_poll, _ann_motion_pending
+
+    if _ann_is_quiet():
+        _ann_motion_pending = False
+        return
+
+    now_s = utime.time()
+    should_poll = False
+
+    if _ann_motion_pending:
+        if (now_s - _ann_last_motion_poll) >= ANNOUNCE_DEBOUNCE_S:
+            should_poll          = True
+            _ann_last_motion_poll = now_s
+        _ann_motion_pending = False
+    elif (now_s - _ann_last_idle_poll) >= ANNOUNCE_IDLE_POLL_S:
+        should_poll = True
+
+    if should_poll:
+        _ann_last_idle_poll = now_s
+        _ann_do_poll()
 
 # -------------------------------------------------------
 # State
@@ -1129,6 +1253,7 @@ while True:
             if last_motion == 1 and prev_motion == 0:
                 last_motion_trigger_time = now
                 send_event("motion_triggered")
+                announce_on_motion()  # backend cooldowns rate-limit announcements
             prev_motion = last_motion
 
             compute_room_metrics()
@@ -1224,5 +1349,9 @@ while True:
             update_clock_dot()
             update_page2()
         save_last_state()
+
+    # Proactive announcements — cheap when nothing's due. Polls every 5 min
+    # idle, immediately on PIR rising edge, never during quiet hours.
+    announce_tick()
 
     wait(1)
