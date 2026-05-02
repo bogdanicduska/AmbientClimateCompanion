@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 
 from app.services.bigquery_service import get_latest_reading
+from app.services.room_metrics_service import enrich_row
 from app.utils.logger import get_logger
 
 latest_bp = Blueprint("latest", __name__)
@@ -24,7 +25,7 @@ def latest():
             logger.warning(f"No data found for device {device_id}")
             return jsonify({"success": False, "message": "No data found for this device"}), 404
 
-        return jsonify({"success": True, "data": row}), 200
+        return jsonify({"success": True, "data": enrich_row(row)}), 200
 
     except Exception:
         current_app.logger.exception(f"Latest reading query failed for {device_id}")

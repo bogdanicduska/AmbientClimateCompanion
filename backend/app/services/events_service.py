@@ -6,15 +6,11 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 VALID_EVENT_TYPES = {
-    "wifi_disconnected",
-    "cache_loaded",
-    "humidity_alert",
-    "air_quality_alert",
-    "boot_recovered",
-    "announcement_spoken",
-    "motion_triggered",
-    "speech_query_received",
-    "speech_summary_spoken",
+    "wifi_connected", "wifi_disconnected", "wifi_failed",
+    "room_online", "room_state_restored", "cache_loaded", "boot_recovered",
+    "room_synced", "room_sync_failed",
+    "humidity_alert", "air_quality_alert", "motion_triggered",
+    "announcement_spoken", "speech_query_received", "speech_summary_spoken",
 }
 
 

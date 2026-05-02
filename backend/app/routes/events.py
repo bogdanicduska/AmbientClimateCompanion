@@ -1,12 +1,34 @@
 from flask import Blueprint, jsonify, request, current_app
 
 from app.services.events_service import store_device_event
+from app.services.bigquery_service import get_recent_events
+from app.services.event_enrichment import enrich_events
 from app.services.auth_service import is_valid_device_token
 from app.utils.validators import validate_event_payload
 from app.utils.logger import get_logger
 
 events_bp = Blueprint("events", __name__)
 logger = get_logger(__name__)
+
+
+@events_bp.get("/events")
+def list_events():
+    """Return recent device events for a given device_id."""
+    device_id = request.args.get("device_id")
+    if not device_id:
+        return jsonify({"success": False, "message": "device_id is required"}), 400
+
+    try:
+        limit = min(int(request.args.get("limit", 20)), 100)
+    except (ValueError, TypeError):
+        limit = 20
+
+    try:
+        raw_events = get_recent_events(device_id, current_app.config, limit=limit)
+        return jsonify({"success": True, "data": enrich_events(raw_events)}), 200
+    except Exception:
+        current_app.logger.exception(f"Failed to fetch events for {device_id}")
+        return jsonify({"success": False, "message": "Internal server error"}), 500
 
 
 @events_bp.post("/events")

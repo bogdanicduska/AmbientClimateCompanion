@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 
 from app.services.bigquery_service import get_history
+from app.services.room_metrics_service import enrich_row
 from app.utils.logger import get_logger
 
 history_bp = Blueprint("history", __name__)
@@ -25,7 +26,7 @@ def history():
     logger.info(f"History requested for {device_id} — last {hours}h")
 
     try:
-        records = get_history(device_id, current_app.config, hours=hours)
+        records = [enrich_row(r) for r in get_history(device_id, current_app.config, hours=hours)]
         logger.info(f"History returned {len(records)} records for {device_id}")
         return jsonify({"success": True, "count": len(records), "data": records}), 200
 

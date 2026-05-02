@@ -13,6 +13,7 @@ from app.routes.speech_tts import speech_tts_bp
 from app.routes.speech_stt import speech_stt_bp
 from app.routes.speech_query import speech_query_bp
 from app.routes.speech_proactive import speech_proactive_bp
+from app.routes.daily_summary import daily_summary_bp
 from app.utils.logger import configure_logging
 
 
@@ -34,6 +35,7 @@ def create_app() -> Flask:
     app.register_blueprint(speech_stt_bp, url_prefix="/api/v1")
     app.register_blueprint(speech_query_bp, url_prefix="/api/v1")
     app.register_blueprint(speech_proactive_bp, url_prefix="/api/v1")
+    app.register_blueprint(daily_summary_bp, url_prefix="/api/v1")
 
     @app.route("/")
     def index():
