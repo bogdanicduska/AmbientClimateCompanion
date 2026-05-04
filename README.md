@@ -169,6 +169,84 @@ Folder structure in place (`pages/`, `components/`, `assets/`) — frontend not 
 
 ---
 
+## Proactive announcements (speaker-only)
+
+The device speaks short ambient announcements at appropriate moments — when you walk into the room, when rain is expected, when air strain is rising — without you needing to ask. All trigger logic, cooldowns, and TTS live on the backend; the device just polls and plays whatever comes back.
+
+### How it works
+
+```
+PIR motion edge ─┐
+                 ├──► GET /api/v1/speech/proactive?device_id=&raw=1
+5-min idle tick ─┘                  │
+                                    ▼
+                  ┌─────────────────┴─────────────────┐
+                  │                                   │
+            204 No Content                  200 + WAV body (16 kHz mono)
+                  │                                   │
+            stay quiet                  write /flash/announce.wav → speaker.playWAV
+```
+
+The polling and playback logic is **inlined directly in `device/main_project.m5f`** — `announce_tick()`, `announce_on_motion()`, `_ann_do_poll()`, plus a few config constants. No external module to flash. Driven from the existing main loop:
+
+- `announce_on_motion()` is called from the PIR rising-edge block (next to `send_event("motion_triggered")`)
+- `announce_tick()` runs every loop iteration before `wait(1)` — cheap when nothing's due
+
+### Backend endpoint
+
+`GET /api/v1/speech/proactive` — drains a per-device pending audio queue first, then evaluates the trigger catalog. Modes:
+
+| Query | Behavior |
+|-------|----------|
+| `?raw=1` | Binary WAV body (16 kHz / 16-bit / mono via `convert_wav_for_m5stack`), `204` if nothing to play |
+| `?dry_run=1` | Evaluates triggers without synthesizing audio or burning the cooldown — useful for "what would fire right now?" |
+| `?force=<trigger_id>` | Bypass condition + cooldown, return that trigger's audio (demo / testing only) |
+| (default) | JSON body with `audio_b64`, kept for legacy clients |
+
+### Trigger catalog
+
+Triggers are evaluated in order; first match wins. Cooldown is per-device, enforced via the `speech_summary_spoken` event log in BigQuery.
+
+| ID | When | Cooldown |
+|----|------|----------|
+| `air_strain_rising` | `air_strain >= 65` | 2 h |
+| `dry_air` | `indoor_humidity < 38` | 3 h |
+| `morning_briefing` | local 07:00–10:00 — combined indoor temp + outdoor weather + umbrella heads-up | 24 h |
+| `umbrella_morning` | morning hours and rain expected today | 6 h |
+| `window_open_invitation` | indoor ≥ outdoor + 3 °C, no rain/storm, daytime | 4 h |
+| `recovery_good_evening` | `recovery_score >= 75`, evening | 4 h |
+| `rain_tomorrow_morning` | evening, rain forecast for tomorrow morning | 12 h |
+| `storm_warning` | active storm warning | 6 h |
+| `weather_announcement` | always available — the "presence-detected, speak weather" fallback | 1 h |
+
+### Quiet hours
+
+The device skips both motion polls and idle polls between **23:00–07:00 local** so a midnight bathroom trip doesn't trigger a weather greeting. The window is configured as `ANNOUNCE_QUIET_START` / `ANNOUNCE_QUIET_END` in `main_project.m5f`.
+
+### Testing
+
+**Peek at what would fire right now (no audio, no cooldown burned):**
+```powershell
+curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&dry_run=1" `
+  -H "Authorization: Bearer weather2026"
+```
+
+**Force a specific trigger to your laptop (audio is returned to curl, not the device):**
+```powershell
+curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&force=morning_briefing&raw=1" `
+  -H "Authorization: Bearer weather2026" -o forced.wav
+```
+
+**End-to-end on the device:** wave at the PIR. Within ~1 s the announcer polls. If the next-eligible trigger is out of cooldown and its condition is true, you hear it. Otherwise the response is `204` and the device stays quiet — by design.
+
+### Operational notes
+
+- Backend cooldowns are authoritative. The device has no per-trigger memory.
+- The audio is re-encoded to 16 kHz / 16-bit / mono on the backend (`convert_wav_for_m5stack`). OpenAI TTS's native 24 kHz output is silently rejected by `speaker.playWAV` on UIFlow1.
+- Microphone (STT / voice ASK) is intentionally **not used** in `main_project.m5f` yet — the M5Stack Core2's PDM mic and speaker share the I2S0 peripheral, and switching directions inside one Python handler resets the device. Voice ASK lives in a separate test script (`device/speech_debug.py`) until the hardware path is sorted out.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |

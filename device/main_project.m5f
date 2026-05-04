@@ -27,7 +27,7 @@ BACKEND_BASE_URL  = "https://ambient-climate-backend-977755576323.europe-west6.r
 BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
 
-DEVICE_ID = "m5stack-duska-home"
+DEVICE_ID = "m5stack-ana-home"
 AUTH_TOKEN        = "weather2026"
 OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
 OWM_CITY          = "Lausanne"
