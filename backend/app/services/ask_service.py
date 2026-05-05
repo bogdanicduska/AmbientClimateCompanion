@@ -35,6 +35,9 @@ def answer_question(device_id: str, question: str, config) -> Dict[str, Any]:
     intent = detect_intent(question)
     logger.info(f"ASK intent={intent!r} question={question!r}")
 
+    if intent == "unknown":
+        return _answer_via_agent(device_id, question, config)
+
     try:
         answer, snapshot = _build_answer(device_id, intent, question, config)
     except Exception as exc:
@@ -42,7 +45,40 @@ def answer_question(device_id: str, question: str, config) -> Dict[str, Any]:
         answer   = "I could not retrieve that data right now. Please try again."
         snapshot = {}
 
-    return {"intent": intent, "answer": answer, "data_snapshot": snapshot}
+    return {
+        "intent":        intent,
+        "answer_source": "regex",
+        "answer":        answer,
+        "data_snapshot": snapshot,
+    }
+
+
+def _answer_via_agent(device_id: str, question: str, config) -> Dict[str, Any]:
+    """Open-ended questions that didn't match a regex intent go to the
+    OpenAI agent. On any failure (no key, timeout, API error) we fall back
+    to the original generic deflection so the device always gets an
+    answer."""
+    try:
+        from app.services.agent_service import agent_answer
+        answer, snapshot = agent_answer(device_id, question, config)
+    except Exception as exc:
+        logger.error(f"ASK agent unavailable: {exc}")
+        answer, snapshot = None, {}
+
+    if not answer:
+        return {
+            "intent":        "unknown",
+            "answer_source": "fallback",
+            "answer":        "I am not sure how to answer that. Try asking about temperature, humidity, air quality, or recovery.",
+            "data_snapshot": {},
+        }
+
+    return {
+        "intent":        "agent",
+        "answer_source": "agent",
+        "answer":        answer,
+        "data_snapshot": snapshot,
+    }
 
 
 # ---------------------------------------------------------------------------

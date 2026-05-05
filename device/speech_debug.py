@@ -107,31 +107,23 @@ PLAY_VOLUME = 6
 # run that session. Btn A from the menu returns to idle.
 # -------------------------------------------------------
 COACH_TECHNIQUES = (
-    {"id": "478", "name": "4-7-8 Breathing",
-     "subtitle": "Calm + sleep",
-     "cycles": 4,
-     "phases": (("INHALE", 4), ("HOLD", 7), ("EXHALE", 8))},
     {"id": "box", "name": "Box Breathing",
      "subtitle": "Focus + reset",
      "cycles": 4,
      "phases": (("INHALE", 4), ("HOLD", 4), ("EXHALE", 4), ("HOLD", 4))},
-    {"id": "coherent", "name": "Coherent Breathing",
-     "subtitle": "Steady state",
-     "cycles": 6,
-     "phases": (("INHALE", 5), ("EXHALE", 5))},
 )
 
 
 # Visual layout — Headspace-inspired coral orb on the existing dark bg.
 # Vertical zones:
 #   y= 12– 38  phase label
-#   y= 44–176  orb + halo (center 110, max radius 56, max halo offset 10)
+#   y= 44–176  orb (center 110, max radius 56)
 #   y=185–216  big countdown digit
 #   y=222–230  cycle progress dots
 COACH_BG       = 0x0A1220
 COACH_CX       = 160
 COACH_CY       = 110
-COACH_R_MIN    = 20
+COACH_R_MIN    = 28
 COACH_R_MAX    = 56
 COACH_FPS      = 4          # frames per second for radius interpolation
 COACH_FRAME_MS = 1000 // COACH_FPS
@@ -142,15 +134,11 @@ ORB_COLOR        = 0xFE6E2E   # warm Headspace coral
 PHASE_TEXT_COLOR = 0xFFD8C0   # soft cream-coral for the phase label
 CYCLE_DOT_DIM    = 0x3A2418   # very dim coral for cycles not yet reached
 
-# Halo glow drawn outside-in. Each (offset_px_beyond_orb, color):
-# the largest disc paints first, smaller halos overlay it, orb sits on top.
-# Result is concentric coral rings that fade into the dark background.
-HALO_TIERS = (
-    (10, 0x2A0F08),   # outermost — barely-there glow
-    (6,  0x6A2810),   # mid ring
-    (3,  0xB04018),   # innermost halo edge — brightest of the three
-)
-HALO_MAX_EXTENT = 12  # > max(offset) + safety pixel; used for wipe radius
+# Wipe margin around the orb. UIFlow1's lcd.circle() fill uses a polygon
+# approximation that produces visible triangular artifacts when thin
+# colored rings overlap, so the orb is rendered as a single solid disc on
+# the dark background — no halo, no glow ring.
+ORB_WIPE_MARGIN = 4
 
 # Phase label center-x positions (FONT_DejaVu24 char width ≈ 14px).
 # Hardcoded because lcd.textWidth() isn't reliable on UIFlow1.
@@ -175,20 +163,17 @@ except AttributeError:
     _COACH_FONT_SM = lcd.FONT_Default
 
 # -------------------------------------------------------
-# Coach menu (touch-driven). Shows 4 selectable rows: 3 breathing
-# techniques + 1 daily affirmation (affirmations.dev API).
+# Coach menu (touch-driven). Three rows: voice Ask (record → STT → ASK
+# → TTS → play), Box Breathing, Quick Advice (AdviceSlip API).
 #
-# Layout: 4 rows of 44px height, 4px gap, starting at y=42.
-# Row 0: 42-86 / Row 1: 90-134 / Row 2: 138-182 / Row 3: 186-230.
-# Bottom 10px breathing room before bezel buttons (y=240+).
+# Layout: rows of 44px height, 4px gap, starting at y=42.
+# Row 0: 42-86 / Row 1: 90-134 / Row 2: 138-182.
+# Bottom space before bezel buttons (y=240+).
 # -------------------------------------------------------
 COACH_MENU_ITEMS = (
+    {"kind": "ask"},
     {"kind": "breathing", "tech_idx": 0},
-    {"kind": "breathing", "tech_idx": 1},
-    {"kind": "breathing", "tech_idx": 2},
-    {"kind": "affirmation",
-     "title": "Daily Affirmation",
-     "subtitle": "A line for today"},
+    {"kind": "advice"},
 )
 
 COACH_ROW_TOP    = 42
@@ -201,15 +186,25 @@ COACH_ROW_FLASH  = 0xFE6E2E   # full coral flash on tap
 COACH_TITLE_DIM  = 0x556677
 COACH_SUBT_DIM   = 0x8899AA
 
-# Affirmation API. Free, no auth, returns {"affirmation": "..."}.
-AFFIRMATION_URL  = "https://www.affirmations.dev/"
-AFFIRMATION_FALLBACKS = (
-    "Be kind to yourself today.",
-    "You are doing enough.",
-    "Trust the moment you are in.",
-    "Breath is always available.",
+# AdviceSlip API. Free, no auth, returns {"slip": {"id": ..., "advice": "..."}}.
+# Practical short hints fit the device's environmental wellbeing role better
+# than abstract affirmations.
+ADVICE_URL  = "https://api.adviceslip.com/advice"
+ADVICE_FALLBACKS = (
+    "Drink a glass of water.",
+    "Open a window for a minute.",
+    "Stand up and stretch briefly.",
+    "Take three slow breaths.",
 )
-_affirmation_fallback_idx = 0
+_advice_fallback_idx = 0
+
+# Pre-baked TTS prompts for the breathing session. Cached lazily on first
+# Box session via fetch_tts_wav, then replayed offline during phase cues.
+COACH_VOICE_WAVS = {
+    "INHALE": "coach_inhale.wav",
+    "HOLD":   "coach_hold.wav",
+    "EXHALE": "coach_exhale.wav",
+}
 
 _busy = False
 
@@ -332,7 +327,6 @@ def fetch_tts_wav(text):
 
         url = BACKEND_URL + "/api/v1/speech/tts?raw=1&profile=m5stack"
         r = urequests.post(url, data=body, headers=_auth_headers())
-        show("TTS HTTP", str(r.status_code), "Downloading")
         print("TTS status:", r.status_code)
 
         if r.status_code != 200:
@@ -374,13 +368,11 @@ def fetch_tts_wav(text):
                     f.write(content)
 
                 size = len(content) if content else 0
-                print("WAV saved:", candidate, "size:", size)
+                _diag("WAV saved: " + candidate + " size=" + str(size))
 
                 del content
                 gc.collect()
 
-                show("WAV saved", "size " + str(size), candidate)
-                time.sleep(1)
                 return True, candidate
             except Exception as e:
                 last_err = "{0}: {1}".format(candidate, e)
@@ -406,10 +398,7 @@ def _dump_wav_format(wav_path):
         ch   = int.from_bytes(hdr[22:24], "little")
         rate = int.from_bytes(hdr[24:28], "little")
         bits = int.from_bytes(hdr[34:36], "little")
-        line = "ch={0} rate={1} bits={2}".format(ch, rate, bits)
-        _diag("wav fmt: " + line)
-        show("WAV format", line, wav_path)
-        time.sleep(2)
+        _diag("wav fmt: ch={0} rate={1} bits={2}".format(ch, rate, bits))
         return ch, rate, bits
     except Exception as e:
         _diag("wav fmt err: " + str(e)[:30])
@@ -430,7 +419,6 @@ def play_wav_file(wav_path):
     gc.collect()
 
     _dump_wav_format(wav_path)
-    show("Playing", wav_path, "")
     _dump_speaker_attrs_once()
 
     # Match main_project.m5f's working call exactly. channel=CHN_R is the
@@ -943,15 +931,12 @@ def _coach_draw_phase_label(phase):
 
 
 def _coach_draw_orb(radius):
-    """Coral orb with three-tier halo glow. Drawing order matters:
-    biggest disc paints first (faintest color), smaller halos overwrite
-    its center, orb sits on top — the result is concentric rings."""
-    # Wipe the entire orb+halo region in one call so the previous frame
-    # is gone before we redraw.
-    wipe_r = COACH_R_MAX + HALO_MAX_EXTENT
-    lcd.circle(COACH_CX, COACH_CY, wipe_r, COACH_BG, COACH_BG)
-    for offset, color in HALO_TIERS:
-        lcd.circle(COACH_CX, COACH_CY, radius + offset, color, color)
+    """Solid coral disc on dark background. The rectangular wipe is
+    pixel-perfect; the orb is one filled circle with no surrounding
+    rings. Anything more elaborate exposes UIFlow1's polygon-fill
+    artifacts as visible triangular edges."""
+    wipe_r = COACH_R_MAX + ORB_WIPE_MARGIN
+    lcd.rect(COACH_CX - wipe_r, COACH_CY - wipe_r, wipe_r * 2, wipe_r * 2, COACH_BG, COACH_BG)
     lcd.circle(COACH_CX, COACH_CY, radius, ORB_COLOR, ORB_COLOR)
 
 
@@ -972,7 +957,7 @@ def _coach_draw_countdown(t_remaining):
 def _coach_draw_cycle_dots(cycles_completed, total_cycles):
     """Row of small dots at the bottom — one per cycle. Past cycles
     filled in coral, future cycles dimmed. Reads like a progress bar."""
-    DOT_R   = 4
+    DOT_R   = 5
     SPACING = 16
     total_w = max(0, total_cycles - 1) * SPACING
     start_x = COACH_CX - total_w // 2
@@ -992,13 +977,120 @@ def _coach_feed_wdt():
             pass
 
 
+class _CoachAbort(Exception):
+    """Raised from inside the breathing render loop when the user presses
+    Btn A. Bubbles cleanly out of all three nested loops (cycle → phase →
+    frame) so we can show a 'Stopped' card and return to the menu."""
+    pass
+
+
+def _coach_check_abort():
+    """Return True if the user pressed Btn A — used as a cancel signal
+    inside the breathing session's frame loop."""
+    try:
+        return btnA.wasPressed()
+    except Exception:
+        return False
+
+
+def _coach_voice_path(phase):
+    """Cached WAV path for a phase word. Prefer /sd, fall back to /flash
+    if SD isn't mounted (the 3 files are tiny — ~30 KB each)."""
+    fname = COACH_VOICE_WAVS.get(phase)
+    if not fname:
+        return None
+    if _sd_ok:
+        return "/sd/" + fname
+    return "/flash/" + fname
+
+
+def _ensure_coach_voice_assets():
+    """Pre-bake 'inhale', 'hold', 'exhale' TTS WAVs to disk on first use.
+    Lazy: keeps boot fast; first Box session takes ~3 s extra. Subsequent
+    sessions play offline from the cache. fetch_tts_wav saves to WAV_PATHS
+    by default; we copy each result into the coach-specific path so a
+    later ASK answer doesn't overwrite our prompts."""
+    needed = []
+    for phase in ("INHALE", "HOLD", "EXHALE"):
+        path = _coach_voice_path(phase)
+        if not path:
+            continue
+        try:
+            uos.stat(path)
+        except Exception:
+            needed.append((phase, path))
+
+    if not needed:
+        return
+
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 100)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Caching voice...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 140)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("First-time setup")
+
+    for phase, path in needed:
+        ok, info = fetch_tts_wav(phase.lower())
+        if not ok:
+            _diag("voice asset fetch failed: " + phase + " " + str(info))
+            continue
+        try:
+            with open(info, "rb") as src:
+                with open(path, "wb") as dst:
+                    while True:
+                        chunk = src.read(2048)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+            _diag("voice asset cached: " + path)
+        except Exception as e:
+            _diag("voice asset copy failed: " + str(e)[:40])
+        gc.collect()
+
+
+def _play_phase_cue(phase):
+    """Fire-and-forget word at phase start. Non-blocking — DMA continues
+    after the call returns, so the orb keeps animating. Word ~600 ms,
+    Box phase 4 s, so DMA drains comfortably before the next cue."""
+    path = _coach_voice_path(phase)
+    if not path:
+        return
+    try:
+        uos.stat(path)
+    except Exception:
+        return
+    try:
+        speaker.playWAV(path,
+                        rate=WAV_RATE,
+                        data_format=speaker.F16B,
+                        channel=speaker.CHN_R,
+                        volume=PLAY_VOLUME)
+        global _speaker_used, _speaker_last_play_ms
+        _speaker_used         = True
+        _speaker_last_play_ms = time.ticks_ms()
+    except Exception as e:
+        print("phase cue err:", e)
+
+
 def run_coach_session(tech):
     """Render a Headspace-inspired guided breathing session on the LCD.
 
     The orb grows during INHALE (smoothstep-eased), holds at max during HOLD
     after an inhale, shrinks during EXHALE, holds at min during HOLD after
-    an exhale. A three-ring coral halo gives the soft glow feel; a row of
-    dots at the bottom tracks cycles completed."""
+    an exhale. A row of dots at the bottom tracks cycles completed.
+
+    Btn A cancels the session at any point — the press is checked once per
+    frame and raises _CoachAbort which unwinds all three nested loops."""
+    # Reclaim I2S0 in case the user came here from Ask (mic-RX) or had a
+    # recent answer playback (speaker-TX). Keeps phase cues from stomping
+    # on a still-active peripheral configuration.
+    _release_mic()
+    _release_speaker()
+
     setScreenColor(COACH_BG)
 
     # ── Intro card ───────────────────────────────────────────────────────
@@ -1013,7 +1105,17 @@ def run_coach_session(tech):
     lcd.setCursor(20, 152)
     lcd.setColor(0x556677)
     lcd.print("Get ready...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 210)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("Press A to stop anytime")
     time.sleep(1.5)
+    # Drain any A-press that landed during the intro hold so it doesn't
+    # immediately abort the session we're about to start.
+    try:
+        btnA.wasPressed()
+    except Exception:
+        pass
 
     # ── Session ──────────────────────────────────────────────────────────
     setScreenColor(COACH_BG)
@@ -1021,45 +1123,64 @@ def run_coach_session(tech):
     cycles    = tech["cycles"]
     phases    = tech["phases"]
     current_r = COACH_R_MIN
+    aborted   = False
 
-    for cycle in range(1, cycles + 1):
-        # Cycle dots reflect cycles completed (cycle-1 fills before this one runs)
-        _coach_draw_cycle_dots(cycle - 1, cycles)
+    try:
+        for cycle in range(1, cycles + 1):
+            # Cycle dots reflect cycles completed (cycle-1 fills before this one runs)
+            _coach_draw_cycle_dots(cycle - 1, cycles)
 
-        for (phase, secs) in phases:
-            _coach_draw_phase_label(phase)
+            for (phase, secs) in phases:
+                _coach_draw_phase_label(phase)
+                _play_phase_cue(phase)
 
-            if phase == "INHALE":
-                start_r, end_r = current_r, COACH_R_MAX
-            elif phase == "EXHALE":
-                start_r, end_r = current_r, COACH_R_MIN
-            else:
-                # HOLD: orb stays at whatever it was (max after inhale,
-                # min after exhale). end_r == start_r so easing is a no-op.
-                start_r, end_r = current_r, current_r
+                if phase == "INHALE":
+                    start_r, end_r = current_r, COACH_R_MAX
+                elif phase == "EXHALE":
+                    start_r, end_r = current_r, COACH_R_MIN
+                else:
+                    # HOLD: orb stays at whatever it was (max after inhale,
+                    # min after exhale). end_r == start_r so easing is a no-op.
+                    start_r, end_r = current_r, current_r
 
-            total_frames = secs * COACH_FPS
-            for f in range(total_frames):
-                frame_start = time.ticks_ms()
-                progress    = (f + 1) / total_frames if total_frames else 1.0
-                eased       = _smoothstep(progress)
-                radius      = int(start_r + (end_r - start_r) * eased)
-                _coach_draw_orb(radius)
+                total_frames = secs * COACH_FPS
+                for f in range(total_frames):
+                    if _coach_check_abort():
+                        raise _CoachAbort()
 
-                # Countdown updates only at second boundaries
-                if f % COACH_FPS == 0:
-                    t_remaining = secs - (f // COACH_FPS)
-                    _coach_draw_countdown(t_remaining)
-                    _coach_feed_wdt()
+                    frame_start = time.ticks_ms()
+                    progress    = (f + 1) / total_frames if total_frames else 1.0
+                    eased       = _smoothstep(progress)
+                    radius      = int(start_r + (end_r - start_r) * eased)
+                    _coach_draw_orb(radius)
 
-                # Subtract draw time so 4 halo+orb circles per frame
-                # (~80-150ms total) don't slow the breath cadence.
-                elapsed  = time.ticks_diff(time.ticks_ms(), frame_start)
-                sleep_ms = COACH_FRAME_MS - elapsed
-                if sleep_ms > 0:
-                    time.sleep(sleep_ms / 1000.0)
+                    # Countdown updates only at second boundaries
+                    if f % COACH_FPS == 0:
+                        t_remaining = secs - (f // COACH_FPS)
+                        _coach_draw_countdown(t_remaining)
+                        _coach_feed_wdt()
 
-            current_r = end_r
+                    elapsed  = time.ticks_diff(time.ticks_ms(), frame_start)
+                    sleep_ms = COACH_FRAME_MS - elapsed
+                    if sleep_ms > 0:
+                        time.sleep(sleep_ms / 1000.0)
+
+                current_r = end_r
+    except _CoachAbort:
+        aborted = True
+
+    if aborted:
+        # ── Stopped card ─────────────────────────────────────────────────
+        setScreenColor(COACH_BG)
+        lcd.font(_COACH_FONT_MED)
+        lcd.setCursor(20, 100)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print("Stopped")
+        lcd.setCursor(20, 140)
+        lcd.setColor(0x556677)
+        lcd.print(tech["name"][:38])
+        time.sleep(1.0)
+        return
 
     # All cycles done — fill the final dot
     _coach_draw_cycle_dots(cycles, cycles)
@@ -1083,9 +1204,14 @@ def run_coach_session(tech):
 def _menu_item_display(item):
     """Return (title, subtitle) for a menu row. Breathing items pull from
     COACH_TECHNIQUES so we don't duplicate the names."""
-    if item["kind"] == "breathing":
+    kind = item["kind"]
+    if kind == "breathing":
         tech = COACH_TECHNIQUES[item["tech_idx"]]
         return tech["name"], tech["subtitle"]
+    if kind == "ask":
+        return "Ask", "Weather, room, anything"
+    if kind == "advice":
+        return "Quick Advice", "A line for now"
     return item.get("title", ""), item.get("subtitle", "")
 
 
@@ -1196,35 +1322,37 @@ def _wrap_text(text, max_chars):
     return lines
 
 
-def _fetch_affirmation():
-    """GET https://www.affirmations.dev/ → returns the affirmation string,
-    or a baked-in fallback if the request fails. Each fallback call cycles
-    to a different message so repeated offline use isn't monotonous."""
-    global _affirmation_fallback_idx
+def _fetch_advice():
+    """GET adviceslip → returns the advice string, or a baked-in fallback
+    if the request fails. Each fallback call cycles to a different message
+    so repeated offline use isn't monotonous."""
+    global _advice_fallback_idx
     try:
-        r = urequests.get(AFFIRMATION_URL)
+        r = urequests.get(ADVICE_URL)
         if r.status_code == 200:
             data = r.json()
             r.close()
-            text = data.get("affirmation", "")
+            slip = data.get("slip", {}) if isinstance(data, dict) else {}
+            text = slip.get("advice", "")
             if text:
                 return text, True
-        r.close()
+        else:
+            r.close()
     except Exception as e:
-        print("affirmation fetch err:", e)
+        print("advice fetch err:", e)
 
-    fb = AFFIRMATION_FALLBACKS[_affirmation_fallback_idx % len(AFFIRMATION_FALLBACKS)]
-    _affirmation_fallback_idx += 1
+    fb = ADVICE_FALLBACKS[_advice_fallback_idx % len(ADVICE_FALLBACKS)]
+    _advice_fallback_idx += 1
     return fb, False
 
 
-def _draw_affirmation_card(text, online):
+def _draw_advice_card(text, online):
     setScreenColor(COACH_BG)
     # Title
     lcd.font(_COACH_FONT_SM)
     lcd.setCursor(8, 14)
     lcd.setColor(ORB_COLOR)
-    lcd.print("Today's Affirmation" if online else "A reminder")
+    lcd.print("Quick Advice" if online else "A reminder")
     # Body — wrap at ~22 chars/line for FONT_DejaVu24, max 4 lines
     lcd.font(_COACH_FONT_MED)
     lines = _wrap_text(text, 22)[:4]
@@ -1244,25 +1372,164 @@ def _draw_affirmation_card(text, online):
     lcd.print("tap to continue")
 
 
-def _run_affirmation():
+def _run_advice():
     setScreenColor(COACH_BG)
     lcd.font(_COACH_FONT_MED)
     lcd.setCursor(20, 110)
     lcd.setColor(COACH_TITLE_DIM)
     lcd.print("Fetching...")
-    text, online = _fetch_affirmation()
-    _draw_affirmation_card(text, online)
-    # Wait up to 30s or until tap
+    text, online = _fetch_advice()
+    _draw_advice_card(text, online)
     _coach_wait_dismiss(30000)
+
+
+def _draw_ask_status(title, subtitle=""):
+    """Plain coach-themed status card — used for transient stages of the
+    voice pipeline (Listening, Thinking, error states)."""
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 90)
+    lcd.setColor(ORB_COLOR)
+    lcd.print(title[:30])
+    if subtitle:
+        lcd.font(_COACH_FONT_SM)
+        lcd.setCursor(20, 130)
+        lcd.setColor(COACH_TITLE_DIM)
+        lcd.print(subtitle[:38])
+
+
+def _draw_answer_card(answer, intent):
+    """Final answer card. Coach header (with intent tag), centered body
+    wrapped to 22 chars × 5 lines, tap-to-continue hint."""
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(8, 14)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Coach")
+    if intent:
+        intent_short = intent[:14]
+        lcd.setCursor(max(120, 312 - len(intent_short) * 9), 14)
+        lcd.setColor(COACH_TITLE_DIM)
+        lcd.print(intent_short)
+
+    lcd.font(_COACH_FONT_MED)
+    lines   = _wrap_text(answer, 22)[:5]
+    total_h = len(lines) * 28
+    start_y = max(48, (240 - total_h) // 2)
+    for i, line in enumerate(lines):
+        text_w = len(line) * 14
+        x      = max(8, (320 - text_w) // 2)
+        lcd.setCursor(x, start_y + i * 28)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print(line)
+
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(110, 222)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("tap to continue")
+
+
+def _run_ask_session():
+    """Voice question: record → STT → /speech/ask → TTS → play.
+
+    The backend's regex-intent router answers weather/room data questions
+    deterministically (temperature, humidity, recovery, air, rain, umbrella,
+    readiness). Open-ended questions return intent='unknown' for now;
+    LLM fallback is a deferred backend task."""
+    # Listening card
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 90)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Listening...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 130)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print("Speak now (" + str(RECORD_SECONDS) + "s)")
+
+    ok, info, size = record_question()
+    if not ok:
+        _draw_ask_status("Record failed", str(info)[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    _draw_ask_status("Thinking...", "Transcribing")
+
+    ok, text = transcribe_wav(RECORD_PATH)
+    if not ok:
+        _draw_ask_status("STT failed", str(text)[:35])
+        _coach_wait_dismiss(3000)
+        return
+    if not text:
+        _draw_ask_status("Did not hear you", "Try louder/closer")
+        _coach_wait_dismiss(3000)
+        return
+
+    print("STT text:", text)
+    _draw_ask_status("Asking...", text[:35])
+
+    try:
+        body = ujson.dumps({
+            "device_id": DEVICE_ID,
+            "question": text,
+        }).encode("utf-8")
+
+        r = urequests.post(
+            BACKEND_URL + "/api/v1/speech/ask",
+            data=body,
+            headers=_auth_headers(),
+        )
+
+        if r.status_code != 200:
+            try:
+                err = r.text
+            except Exception:
+                err = ""
+            r.close()
+            _draw_ask_status("ASK HTTP " + str(r.status_code), str(err)[:35])
+            _coach_wait_dismiss(4000)
+            return
+
+        data = r.json()
+        r.close()
+
+        d      = data.get("data", {}) if isinstance(data, dict) else {}
+        answer = d.get("answer", "")
+        intent = d.get("intent", "")
+
+    except Exception as e:
+        _draw_ask_status("ASK error", str(e)[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    if not answer:
+        _draw_ask_status("No answer", intent[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    print("ASK intent:", intent, "answer:", answer)
+    _draw_answer_card(answer, intent)
+
+    # Fetch + play TTS. Mic was released at end of record_question, so
+    # I2S0 is free for speaker.playWAV.
+    ok, result = fetch_tts_wav(answer)
+    if ok:
+        play_wav_file(result)
+
+    _coach_wait_dismiss(8000)
 
 
 def _execute_menu_item(row):
     item = COACH_MENU_ITEMS[row]
-    if item["kind"] == "breathing":
+    kind = item["kind"]
+    if kind == "ask":
+        _run_ask_session()
+    elif kind == "breathing":
         tech = COACH_TECHNIQUES[item["tech_idx"]]
+        _ensure_coach_voice_assets()
         run_coach_session(tech)
-    elif item["kind"] == "affirmation":
-        _run_affirmation()
+    elif kind == "advice":
+        _run_advice()
 
 
 def coach_session():
