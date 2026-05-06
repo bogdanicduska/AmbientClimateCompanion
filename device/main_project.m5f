@@ -8,6 +8,41 @@ import struct
 import machine
 import unit
 import gc
+import urequests
+import ujson
+import ubinascii
+import uos
+import array
+
+try:
+    from m5stack import touch as _touch
+    _HAS_TOUCH = True
+except Exception as _t_imp_err:
+    print("touch import failed:", _t_imp_err)
+    _HAS_TOUCH = False
+    _touch = None
+
+try:
+    from machine import SDCard
+    _HAS_SDCARD = True
+except Exception as _sd_imp_err:
+    print("SD import failed:", _sd_imp_err)
+    _HAS_SDCARD = False
+
+try:
+    from machine import I2S
+    _HAS_I2S = True
+except Exception as _i2s_imp_err:
+    print("I2S import failed:", _i2s_imp_err)
+    _HAS_I2S = False
+
+try:
+    from machine import WDT
+    _wdt = WDT(timeout=120000)   # 2 min — covers any single speech action
+    print("WDT armed (120s)")
+except Exception as _wdt_err:
+    print("WDT not available:", _wdt_err)
+    _wdt = None
 
 setScreenColor(0x0D0D0D)
 
@@ -83,6 +118,104 @@ ANNOUNCE_VOLUME      = 6
 _ann_last_idle_poll   = 0
 _ann_last_motion_poll = 0
 _ann_motion_pending   = False
+
+# -------------------------------------------------------
+# Speech / Coach configuration  (touch menu under btnC: Ask, Breathe, Advice)
+# -------------------------------------------------------
+SPEECH_BACKEND   = BACKEND_BASE_URL + "/speech"
+WAV_RATE         = 16000
+WAV_BITS         = 16
+WAV_PATHS        = ("/sd/answer.wav", "/flash/answer.wav")
+RECORD_PATH      = "/sd/question.wav"
+RECORD_SECONDS   = 5
+RECORD_RATE      = 16000
+PLAY_VOLUME      = 6
+
+MIC_WS_PIN       = 0
+MIC_DATA_PIN     = 34
+MIC_GAIN         = 5
+MIC_SILENCE_THRESHOLD = 700
+I2S_DMA_COUNT    = 16
+I2S_DMA_LEN      = 256
+I2S_READ_SAMPLES = 1024
+
+# Coach orb visuals — solid coral disc on dark bg (no halo).
+COACH_BG       = 0x0A1220
+COACH_CX       = 160
+COACH_CY       = 110
+COACH_R_MIN    = 28
+COACH_R_MAX    = 56
+COACH_FPS      = 4
+COACH_FRAME_MS = 1000 // COACH_FPS
+ORB_COLOR        = 0xFE6E2E
+PHASE_TEXT_COLOR = 0xFFD8C0
+CYCLE_DOT_DIM    = 0x3A2418
+ORB_WIPE_MARGIN  = 4
+PHASE_LABEL_X = {"INHALE": 118, "HOLD": 132, "EXHALE": 118}
+
+COACH_TECHNIQUES = (
+    {"id": "box", "name": "Box Breathing",
+     "subtitle": "Focus + reset",
+     "cycles": 4,
+     "phases": (("INHALE", 4), ("HOLD", 4), ("EXHALE", 4), ("HOLD", 4))},
+)
+
+# Coach menu rows under btnC (3 rows of 40 px starting at y=98 — leaves room
+# for the recommendation hero on top, footer at the bottom).
+COACH_MENU_ITEMS = (
+    {"kind": "ask"},
+    {"kind": "breathing", "tech_idx": 0},
+    {"kind": "advice"},
+)
+COACH_ROW_TOP    = 98
+COACH_ROW_HEIGHT = 40
+COACH_ROW_GAP    = 4
+COACH_ROW_PITCH  = COACH_ROW_HEIGHT + COACH_ROW_GAP
+COACH_ROW_BG     = 0x0F1828
+COACH_ROW_FLASH  = 0xFE6E2E
+COACH_TITLE_DIM  = 0x556677
+COACH_SUBT_DIM   = 0x8899AA
+
+ADVICE_URL = "https://api.adviceslip.com/advice"
+ADVICE_FALLBACKS = (
+    "Drink a glass of water.",
+    "Open a window for a minute.",
+    "Stand up and stretch briefly.",
+    "Take three slow breaths.",
+)
+
+# Pre-baked TTS prompts for the breathing session — cached lazily on first
+# Box session so subsequent runs play offline.
+COACH_VOICE_WAVS = {
+    "INHALE": "coach_inhale.wav",
+    "HOLD":   "coach_hold.wav",
+    "EXHALE": "coach_exhale.wav",
+}
+
+# Speech state — guarded against the announcer via _speech_busy.
+_MIC = None
+_speaker_used         = False
+_speaker_last_play_ms = 0
+_speech_busy          = False
+_advice_fallback_idx  = 0
+_sd_ok                = False  # set during boot
+
+# Detect available large fonts (UIFlow1 builds vary).
+try:
+    _COACH_FONT_BIG = lcd.FONT_DejaVu40
+except AttributeError:
+    try:
+        _COACH_FONT_BIG = lcd.FONT_DejaVu24
+    except AttributeError:
+        _COACH_FONT_BIG = lcd.FONT_Default
+try:
+    _COACH_FONT_MED = lcd.FONT_DejaVu24
+except AttributeError:
+    _COACH_FONT_MED = lcd.FONT_Default
+try:
+    _COACH_FONT_SM = lcd.FONT_DejaVu18
+except AttributeError:
+    _COACH_FONT_SM = lcd.FONT_Default
 
 
 def _ann_local_hour():
@@ -160,8 +293,15 @@ def announce_on_motion():
 def announce_tick():
     """Call from the main loop every iteration. Cheap when nothing's due —
     only issues a network call when the schedule or motion says so, never
-    during quiet hours."""
+    during quiet hours.
+
+    Skipped entirely while a speech action (Ask / Breathing / Advice) is
+    running so the announcer's speaker.playWAV cannot collide with the
+    mic record or with our own answer playback on the shared I2S0 bus."""
     global _ann_last_idle_poll, _ann_last_motion_poll, _ann_motion_pending
+
+    if _speech_busy:
+        return
 
     if _ann_is_quiet():
         _ann_motion_pending = False
@@ -1104,12 +1244,969 @@ def update_all():
     except: pass
 
 # -------------------------------------------------------
+# Speech / Coach — touch menu under btnC
+#
+# Reuses the I2S0 speaker↔mic handoff trick from speech_debug.py:
+# constructing a fresh I2S(NUM0, mode=MASTER_PDM, ...) forcibly reclaims
+# the peripheral from speaker-TX so we can record. _release_mic() drops
+# the input config so the next speaker.playWAV can reconfigure for output.
+# The announcer respects _speech_busy so it cannot collide on I2S0.
+# -------------------------------------------------------
+DIAG_LOG_PATH = "/flash/diag.log"
+
+
+def _diag(msg):
+    try:
+        print(msg)
+    except Exception:
+        pass
+    try:
+        with open(DIAG_LOG_PATH, "a") as _f:
+            _f.write(str(msg) + "\n")
+    except Exception:
+        pass
+
+
+def _diag_reset():
+    try:
+        with open(DIAG_LOG_PATH, "w") as _f:
+            _f.write("--- diag boot ---\n")
+    except Exception:
+        pass
+
+
+def mount_sd():
+    if not _HAS_SDCARD:
+        return False
+    try:
+        uos.listdir("/sd")
+        return True
+    except Exception:
+        pass
+    try:
+        from machine import Pin as _SDPin
+        sd = SDCard(slot=2, sck=_SDPin(23), miso=_SDPin(33), mosi=_SDPin(19), freq=10000000)
+    except Exception as e:
+        _diag("SDCard ctor failed: " + str(e)[:40])
+        return False
+    fn = getattr(uos, "mountsd", None)
+    if fn:
+        try:
+            fn(sd, "/sd")
+            return True
+        except Exception:
+            pass
+    try:
+        uos.mount(sd, "/sd")
+        return True
+    except Exception as e:
+        _diag("SD mount failed: " + str(e)[:40])
+        return False
+
+
+def _speech_auth_headers():
+    return {
+        "Authorization": "Bearer " + AUTH_TOKEN,
+        "Content-Type":  "application/json",
+    }
+
+
+def _release_speaker():
+    """Wait for any in-progress speaker DMA to drain. The actual I2S0 mode
+    flip back to mic-RX is done by constructing a fresh I2S(NUM0, ...) inside
+    _init_mic — see the I2S0-handoff comment block above."""
+    if not _speaker_used:
+        return
+    idle_ms = utime.ticks_diff(utime.ticks_ms(), _speaker_last_play_ms)
+    if idle_ms < 800:
+        utime.sleep_ms(800 - idle_ms)
+    gc.collect()
+
+
+def _init_mic():
+    """Forcibly take I2S0 in MASTER_PDM mode. Bypasses MicrophonePDM."""
+    global _MIC
+
+    if not _HAS_I2S:
+        _diag("I2S unavailable — cannot init mic")
+        return False
+
+    if _MIC is not None:
+        try:
+            _MIC.deinit()
+        except Exception:
+            pass
+        _MIC = None
+        gc.collect()
+
+    try:
+        from machine import Pin as _MicPin
+        _MIC = I2S(
+            I2S.NUM0,
+            ws=_MicPin(MIC_WS_PIN),
+            sdin=_MicPin(MIC_DATA_PIN),
+            mode=I2S.MASTER_PDM,
+            dataformat=I2S.B16,
+            channelformat=I2S.ONLY_RIGHT,
+            samplerate=RECORD_RATE,
+            dmacount=I2S_DMA_COUNT,
+            dmalen=I2S_DMA_LEN,
+        )
+        _diag("I2S mic init OK")
+        return True
+    except Exception as e:
+        _diag("I2S mic init FAIL: " + str(e)[:40])
+        _MIC = None
+        return False
+
+
+def _release_mic():
+    global _MIC
+    if _MIC is None:
+        return
+    try:
+        _MIC.deinit()
+    except Exception:
+        pass
+    _MIC = None
+    gc.collect()
+    utime.sleep_ms(200)
+
+
+def _wav_header(data_size, sample_rate=RECORD_RATE, bits=16, channels=1):
+    byte_rate   = sample_rate * channels * bits // 8
+    block_align = channels * bits // 8
+    riff_size   = 36 + data_size
+    h = bytearray(44)
+    h[0:4]   = b"RIFF"
+    h[4:8]   = riff_size.to_bytes(4, "little")
+    h[8:12]  = b"WAVE"
+    h[12:16] = b"fmt "
+    h[16:20] = (16).to_bytes(4, "little")
+    h[20:22] = (1).to_bytes(2, "little")
+    h[22:24] = channels.to_bytes(2, "little")
+    h[24:28] = sample_rate.to_bytes(4, "little")
+    h[28:32] = byte_rate.to_bytes(4, "little")
+    h[32:34] = block_align.to_bytes(2, "little")
+    h[34:36] = (bits).to_bytes(2, "little")
+    h[36:40] = b"data"
+    h[40:44] = data_size.to_bytes(4, "little")
+    return h
+
+
+def record_question():
+    try:
+        uos.remove(RECORD_PATH)
+    except Exception:
+        pass
+
+    _release_speaker()
+    if not _init_mic():
+        return False, "MIC init failed", 0
+
+    f = None
+    try:
+        f = open(RECORD_PATH, "wb")
+        f.write(b"\x00" * 44)
+
+        buf       = array.array("h", [0] * I2S_READ_SAMPLES)
+        buf_bytes = I2S_READ_SAMPLES * 2
+        gain      = MIC_GAIN
+        max16     = 32767
+        min16     = -32768
+
+        target_bytes = RECORD_SECONDS * RECORD_RATE * 2
+        data_bytes   = 0
+        t_start      = utime.ticks_ms()
+        deadline_ms  = (RECORD_SECONDS + 2) * 1000
+
+        while data_bytes < target_bytes:
+            if utime.ticks_diff(utime.ticks_ms(), t_start) > deadline_ms:
+                break
+            try:
+                n = _MIC.readinto(buf)
+            except Exception as _re:
+                _diag("readinto err: " + str(_re)[:40])
+                break
+
+            if n is None:
+                n = buf_bytes
+            if n <= 0:
+                continue
+
+            samples = n // 2
+            for i in range(samples):
+                v = buf[i] * gain
+                if v > max16:
+                    v = max16
+                elif v < min16:
+                    v = min16
+                buf[i] = v
+
+            if n == buf_bytes:
+                f.write(buf)
+            else:
+                f.write(memoryview(buf)[:samples])
+            data_bytes += n
+
+            if _wdt is not None:
+                try: _wdt.feed()
+                except Exception: pass
+
+        f.seek(0)
+        f.write(_wav_header(data_bytes))
+        f.flush()
+        f.close()
+        f = None
+
+        _release_mic()
+
+        try:
+            size = uos.stat(RECORD_PATH)[6]
+        except Exception:
+            size = 0
+
+        if data_bytes <= 0 or size <= 44:
+            return False, "tiny file", size
+
+        gc.collect()
+        utime.sleep_ms(400)
+        return True, "ok", size
+
+    except Exception as e:
+        if f is not None:
+            try: f.close()
+            except Exception: pass
+        _release_mic()
+        gc.collect()
+        return False, str(e)[:60], 0
+
+
+def transcribe_wav(wav_path):
+    try:
+        size = uos.stat(wav_path)[6]
+    except Exception:
+        return False, "no recording on disk"
+    if size == 0:
+        return False, "0-byte recording"
+
+    try:
+        with open(wav_path, "rb") as f:
+            wav_bytes = f.read()
+        b64 = ubinascii.b2a_base64(wav_bytes).decode("utf-8").rstrip("\n")
+        del wav_bytes
+        gc.collect()
+
+        body = ujson.dumps({
+            "device_id": DEVICE_ID,
+            "audio_b64": b64,
+            "format":    "wav",
+        }).encode("utf-8")
+        del b64
+        gc.collect()
+
+        r = urequests.post(SPEECH_BACKEND + "/stt", data=body, headers=_speech_auth_headers())
+        del body
+        gc.collect()
+
+        if r.status_code != 200:
+            try: err = r.text
+            except Exception: err = ""
+            r.close()
+            return False, "HTTP {0}: {1}".format(r.status_code, str(err)[:50])
+
+        data = r.json()
+        r.close()
+        d = data.get("data", {}) if isinstance(data, dict) else {}
+        text = d.get("transcript") or d.get("text") or d.get("transcription") or ""
+        return True, text
+    except Exception as e:
+        return False, str(e)[:60]
+
+
+def fetch_tts_wav(text):
+    try:
+        body = ujson.dumps({
+            "device_id": DEVICE_ID,
+            "text":      text,
+            "format":    "wav",
+        }).encode("utf-8")
+
+        url = SPEECH_BACKEND + "/tts?raw=1&profile=m5stack"
+        r = urequests.post(url, data=body, headers=_speech_auth_headers())
+        if r.status_code != 200:
+            r.close()
+            return False, "HTTP " + str(r.status_code)
+
+        try:
+            content = r.content
+        except Exception as e:
+            r.close()
+            return False, "no body: " + str(e)
+        r.close()
+
+        if not content or len(content) <= 1024 or not content.startswith(b"RIFF"):
+            return False, "bad WAV body"
+
+        last_err = "no path"
+        for candidate in WAV_PATHS:
+            try:
+                with open(candidate, "wb") as f:
+                    f.write(content)
+                size = len(content)
+                _diag("WAV saved: " + candidate + " size=" + str(size))
+                del content
+                gc.collect()
+                return True, candidate
+            except Exception as e:
+                last_err = "{0}: {1}".format(candidate, e)
+        return False, last_err
+    except Exception as e:
+        return False, str(e)[:60]
+
+
+def play_wav_file(wav_path):
+    global _speaker_used, _speaker_last_play_ms
+    try:
+        wav_size = uos.stat(wav_path)[6]
+    except Exception:
+        wav_size = 0
+    bytes_per_sec = WAV_RATE * (WAV_BITS // 8)
+    est_secs = max(1.0, (wav_size - 44) / float(bytes_per_sec)) if wav_size else 3.0
+    if est_secs > 30:
+        est_secs = 30
+    gc.collect()
+    try:
+        speaker.playWAV(
+            wav_path,
+            rate=WAV_RATE,
+            data_format=speaker.F16B,
+            channel=speaker.CHN_R,
+            volume=PLAY_VOLUME,
+        )
+    except Exception as e:
+        return False, str(e)[:50]
+    try:
+        wait_ms(int(est_secs * 1000) + 500)
+    except Exception:
+        utime.sleep(est_secs + 0.5)
+    _speaker_used         = True
+    _speaker_last_play_ms = utime.ticks_ms()
+    return True, "ok"
+
+
+# --- Coach orb / breathing helpers --------------------------------------
+
+def _smoothstep(t):
+    if t <= 0.0: return 0.0
+    if t >= 1.0: return 1.0
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _coach_draw_phase_label(phase):
+    lcd.rect(0, 8, 320, 32, COACH_BG, COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(PHASE_LABEL_X.get(phase, 130), 12)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(phase)
+
+
+def _coach_draw_orb(radius):
+    """Solid coral disc on dark bg — no halo. UIFlow1's lcd.circle() fill
+    uses polygon approximation; any overlapping ring exposes triangular
+    edges, so we render just one filled circle."""
+    wipe_r = COACH_R_MAX + ORB_WIPE_MARGIN
+    lcd.rect(COACH_CX - wipe_r, COACH_CY - wipe_r, wipe_r * 2, wipe_r * 2, COACH_BG, COACH_BG)
+    lcd.circle(COACH_CX, COACH_CY, radius, ORB_COLOR, ORB_COLOR)
+
+
+def _coach_draw_countdown(t_remaining):
+    lcd.rect(135, 182, 50, 38, COACH_BG, COACH_BG)
+    lcd.font(_COACH_FONT_BIG)
+    digit = str(int(t_remaining))
+    half_w = 12 if len(digit) == 1 else 24
+    lcd.setCursor(COACH_CX - half_w, 184)
+    lcd.setColor(ORB_COLOR)
+    lcd.print(digit)
+
+
+def _coach_draw_cycle_dots(cycles_completed, total_cycles):
+    DOT_R   = 5
+    SPACING = 16
+    total_w = max(0, total_cycles - 1) * SPACING
+    start_x = COACH_CX - total_w // 2
+    y       = 226
+    lcd.rect(0, y - DOT_R - 1, 320, DOT_R * 2 + 2, COACH_BG, COACH_BG)
+    for i in range(total_cycles):
+        x   = start_x + i * SPACING
+        col = ORB_COLOR if i < cycles_completed else CYCLE_DOT_DIM
+        lcd.circle(x, y, DOT_R, col, col)
+
+
+def _coach_feed_wdt():
+    if _wdt is not None:
+        try: _wdt.feed()
+        except Exception: pass
+
+
+class _CoachAbort(Exception):
+    """Raised inside the breathing loop when the user cancels (Btn A or
+    a touch tap). Bubbles out of all three nested loops so we can show a
+    'Stopped' card and return to the menu cleanly."""
+    pass
+
+
+def _coach_check_abort():
+    """Return True if the user wants to stop the breathing session.
+    Accepts btnA poll OR any touch tap — touch is independent of button
+    polling quirks and works even if the runtime quietly consumes presses."""
+    try:
+        if btnA.wasPressed():
+            return True
+    except Exception:
+        pass
+    if _HAS_TOUCH:
+        try:
+            if _touch.status():
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _coach_wait_release():
+    """Block until the touchscreen reports no contact. Used after we return
+    from an action to consume the still-held press."""
+    if not _HAS_TOUCH:
+        return
+    deadline = utime.ticks_ms() + 1500
+    while True:
+        try:
+            if not _touch.status():
+                return
+        except Exception:
+            return
+        if utime.ticks_diff(deadline, utime.ticks_ms()) <= 0:
+            return
+        utime.sleep_ms(20)
+
+
+def _coach_wait_dismiss(timeout_ms):
+    utime.sleep_ms(300)
+    end = utime.ticks_ms() + timeout_ms
+    while utime.ticks_diff(end, utime.ticks_ms()) > 0:
+        if _HAS_TOUCH:
+            try:
+                if _touch.status():
+                    _coach_wait_release()
+                    return
+            except Exception:
+                pass
+        if btnA.wasPressed() or btnB.wasPressed() or btnC.wasPressed():
+            return
+        utime.sleep_ms(40)
+        _coach_feed_wdt()
+
+
+def _coach_voice_path(phase):
+    fname = COACH_VOICE_WAVS.get(phase)
+    if not fname:
+        return None
+    if _sd_ok:
+        return "/sd/" + fname
+    return "/flash/" + fname
+
+
+def _ensure_coach_voice_assets():
+    needed = []
+    for phase in ("INHALE", "HOLD", "EXHALE"):
+        path = _coach_voice_path(phase)
+        if not path:
+            continue
+        try:
+            uos.stat(path)
+        except Exception:
+            needed.append((phase, path))
+    if not needed:
+        return
+
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 100)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Caching voice...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 140)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("First-time setup")
+
+    for phase, path in needed:
+        ok, info = fetch_tts_wav(phase.lower())
+        if not ok:
+            _diag("voice asset fetch failed: " + phase + " " + str(info))
+            continue
+        try:
+            with open(info, "rb") as src:
+                with open(path, "wb") as dst:
+                    while True:
+                        chunk = src.read(2048)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+        except Exception as e:
+            _diag("voice asset copy failed: " + str(e)[:40])
+        gc.collect()
+
+
+def _play_phase_cue(phase):
+    """Fire-and-forget word at phase start. Non-blocking — DMA continues
+    after the call returns, so the orb keeps animating."""
+    global _speaker_used, _speaker_last_play_ms
+    path = _coach_voice_path(phase)
+    if not path:
+        return
+    try:
+        uos.stat(path)
+    except Exception:
+        return
+    try:
+        speaker.playWAV(path,
+                        rate=WAV_RATE,
+                        data_format=speaker.F16B,
+                        channel=speaker.CHN_R,
+                        volume=PLAY_VOLUME)
+        _speaker_used         = True
+        _speaker_last_play_ms = utime.ticks_ms()
+    except Exception as e:
+        print("phase cue err:", e)
+
+
+def run_coach_session(tech):
+    """Run one breathing session. Btn A or any touch tap cancels."""
+    _release_mic()
+    _release_speaker()
+
+    setScreenColor(COACH_BG)
+
+    # Intro card
+    lcd.rect(0, 0, 320, 240, COACH_BG, COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 80)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(tech["name"][:38])
+    lcd.setCursor(20, 116)
+    lcd.setColor(0xAAAAAA)
+    lcd.print(tech["subtitle"][:38])
+    lcd.setCursor(20, 152)
+    lcd.setColor(0x556677)
+    lcd.print("Get ready...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 210)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("A or tap screen to stop")
+    utime.sleep(1.5)
+
+    # Drain stale presses / touches from before the session starts.
+    try: btnA.wasPressed()
+    except Exception: pass
+    if _HAS_TOUCH:
+        _coach_wait_release()
+
+    setScreenColor(COACH_BG)
+
+    cycles    = tech["cycles"]
+    phases    = tech["phases"]
+    current_r = COACH_R_MIN
+    aborted   = False
+
+    try:
+        for cycle in range(1, cycles + 1):
+            _coach_draw_cycle_dots(cycle - 1, cycles)
+            for (phase, secs) in phases:
+                _coach_draw_phase_label(phase)
+                _play_phase_cue(phase)
+
+                if phase == "INHALE":
+                    start_r, end_r = current_r, COACH_R_MAX
+                elif phase == "EXHALE":
+                    start_r, end_r = current_r, COACH_R_MIN
+                else:
+                    start_r, end_r = current_r, current_r
+
+                total_frames = secs * COACH_FPS
+                for f in range(total_frames):
+                    if _coach_check_abort():
+                        raise _CoachAbort()
+
+                    frame_start = utime.ticks_ms()
+                    progress    = (f + 1) / total_frames if total_frames else 1.0
+                    eased       = _smoothstep(progress)
+                    radius      = int(start_r + (end_r - start_r) * eased)
+                    _coach_draw_orb(radius)
+
+                    if f % COACH_FPS == 0:
+                        t_remaining = secs - (f // COACH_FPS)
+                        _coach_draw_countdown(t_remaining)
+                        _coach_feed_wdt()
+
+                    elapsed  = utime.ticks_diff(utime.ticks_ms(), frame_start)
+                    sleep_ms = COACH_FRAME_MS - elapsed
+                    if sleep_ms > 0:
+                        utime.sleep_ms(sleep_ms)
+
+                current_r = end_r
+    except _CoachAbort:
+        aborted = True
+
+    if aborted:
+        setScreenColor(COACH_BG)
+        lcd.font(_COACH_FONT_MED)
+        lcd.setCursor(20, 100)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print("Stopped")
+        lcd.setCursor(20, 140)
+        lcd.setColor(0x556677)
+        lcd.print(tech["name"][:38])
+        utime.sleep(1)
+        if _HAS_TOUCH:
+            _coach_wait_release()
+        return
+
+    _coach_draw_cycle_dots(cycles, cycles)
+
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 80)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Done.")
+    lcd.setCursor(20, 116)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(tech["name"][:38])
+    lcd.setCursor(20, 152)
+    lcd.setColor(0x556677)
+    lcd.print("Tap to continue")
+    _coach_wait_dismiss(3000)
+
+
+# --- Advice -------------------------------------------------------------
+
+def _wrap_text(text, max_chars):
+    words = text.split(" ")
+    lines = []
+    current = ""
+    for w in words:
+        if not current:
+            current = w
+        elif len(current) + 1 + len(w) <= max_chars:
+            current = current + " " + w
+        else:
+            lines.append(current)
+            current = w
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _fetch_advice():
+    global _advice_fallback_idx
+    try:
+        r = urequests.get(ADVICE_URL)
+        if r.status_code == 200:
+            data = r.json()
+            r.close()
+            slip = data.get("slip", {}) if isinstance(data, dict) else {}
+            text = slip.get("advice", "")
+            if text:
+                return text, True
+        else:
+            r.close()
+    except Exception as e:
+        print("advice fetch err:", e)
+    fb = ADVICE_FALLBACKS[_advice_fallback_idx % len(ADVICE_FALLBACKS)]
+    _advice_fallback_idx += 1
+    return fb, False
+
+
+def _draw_advice_card(text, online):
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(8, 14)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Quick Advice" if online else "A reminder")
+    lcd.font(_COACH_FONT_MED)
+    lines = _wrap_text(text, 22)[:4]
+    total_h = len(lines) * 30
+    start_y = (240 - total_h) // 2
+    for i, line in enumerate(lines):
+        text_w = len(line) * 14
+        x      = max(8, (320 - text_w) // 2)
+        lcd.setCursor(x, start_y + i * 30)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print(line)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(110, 218)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("tap to continue")
+
+
+def _run_advice():
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 110)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("Fetching...")
+    text, online = _fetch_advice()
+    _draw_advice_card(text, online)
+    _coach_wait_dismiss(30000)
+
+
+# --- Voice Ask ----------------------------------------------------------
+
+def _draw_ask_status(title, subtitle=""):
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 90)
+    lcd.setColor(ORB_COLOR)
+    lcd.print(title[:30])
+    if subtitle:
+        lcd.font(_COACH_FONT_SM)
+        lcd.setCursor(20, 130)
+        lcd.setColor(COACH_TITLE_DIM)
+        lcd.print(subtitle[:38])
+
+
+def _draw_answer_card(answer):
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(8, 14)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Coach")
+    lcd.font(_COACH_FONT_MED)
+    lines   = _wrap_text(answer, 22)[:5]
+    total_h = len(lines) * 28
+    start_y = max(48, (240 - total_h) // 2)
+    for i, line in enumerate(lines):
+        text_w = len(line) * 14
+        x      = max(8, (320 - text_w) // 2)
+        lcd.setCursor(x, start_y + i * 28)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print(line)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(110, 222)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("tap to continue")
+
+
+def _run_ask_session():
+    """Voice question: record → STT → /speech/ask (LLM agent) → TTS → play."""
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 90)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Listening...")
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 130)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print("Speak now (" + str(RECORD_SECONDS) + "s)")
+
+    ok, info, size = record_question()
+    if not ok:
+        _draw_ask_status("Record failed", str(info)[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    _draw_ask_status("Thinking...", "Transcribing")
+    ok, text = transcribe_wav(RECORD_PATH)
+    if not ok:
+        _draw_ask_status("STT failed", str(text)[:35])
+        _coach_wait_dismiss(3000)
+        return
+    if not text:
+        _draw_ask_status("Did not hear you", "Try louder/closer")
+        _coach_wait_dismiss(3000)
+        return
+
+    _diag("ASK text: " + str(text)[:60])
+    _draw_ask_status("Asking...", text[:35])
+
+    try:
+        body = ujson.dumps({"device_id": DEVICE_ID, "question": text}).encode("utf-8")
+        r = urequests.post(SPEECH_BACKEND + "/ask",
+                           data=body, headers=_speech_auth_headers())
+        if r.status_code != 200:
+            try: err = r.text
+            except Exception: err = ""
+            r.close()
+            _draw_ask_status("ASK HTTP " + str(r.status_code), str(err)[:35])
+            _coach_wait_dismiss(4000)
+            return
+        data = r.json()
+        r.close()
+        d      = data.get("data", {}) if isinstance(data, dict) else {}
+        answer = d.get("answer", "")
+    except Exception as e:
+        _draw_ask_status("ASK error", str(e)[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    if not answer:
+        _draw_ask_status("No answer", "")
+        _coach_wait_dismiss(3000)
+        return
+
+    _diag("ASK answer: " + str(answer)[:80])
+    _draw_answer_card(answer)
+
+    ok, result = fetch_tts_wav(answer)
+    if ok:
+        play_wav_file(result)
+
+    _coach_wait_dismiss(8000)
+
+
+# --- Coach menu screen (under btnC) -------------------------------------
+
+def _menu_item_display(item):
+    kind = item["kind"]
+    if kind == "ask":
+        return "Ask",          "Weather, room, anything"
+    if kind == "breathing":
+        tech = COACH_TECHNIQUES[item["tech_idx"]]
+        return tech["name"], tech["subtitle"]
+    if kind == "advice":
+        return "Quick Advice", "A line for now"
+    return "", ""
+
+
+def _coach_row_y(row):
+    return COACH_ROW_TOP + row * COACH_ROW_PITCH
+
+
+def _coach_row_at(y):
+    if y < COACH_ROW_TOP:
+        return -1
+    rel = y - COACH_ROW_TOP
+    row = rel // COACH_ROW_PITCH
+    if row >= len(COACH_MENU_ITEMS):
+        return -1
+    if (rel - row * COACH_ROW_PITCH) >= COACH_ROW_HEIGHT:
+        return -1
+    return row
+
+
+def _draw_menu_row(row, item):
+    title, subtitle = _menu_item_display(item)
+    y = _coach_row_y(row)
+    lcd.rect(0, y, 320, COACH_ROW_HEIGHT, COACH_ROW_BG, COACH_ROW_BG)
+    lcd.rect(8, y + 6, 4, COACH_ROW_HEIGHT - 12, ORB_COLOR, ORB_COLOR)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(24, y + 4)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(title[:30])
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(24, y + 22)
+    lcd.setColor(COACH_SUBT_DIM)
+    lcd.print(subtitle[:36])
+
+
+def _draw_coach_menu():
+    setScreenColor(COACH_BG)
+    # Top bar — title + back hint
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(8, 10)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print("Coach")
+    lcd.setCursor(252, 10)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("A back")
+    lcd.line(8, 34, 312, 34, 0x1A2A3A)
+    # Tagline below the bar
+    lcd.setCursor(8, 50)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("Tap a row to start")
+    # Rows
+    for i, item in enumerate(COACH_MENU_ITEMS):
+        _draw_menu_row(i, item)
+
+
+def _flash_row(row):
+    y = _coach_row_y(row)
+    lcd.rect(0, y, 320, COACH_ROW_HEIGHT, COACH_ROW_FLASH, COACH_ROW_FLASH)
+    utime.sleep_ms(100)
+
+
+def _execute_menu_item(row):
+    global _speech_busy
+    item = COACH_MENU_ITEMS[row]
+    kind = item["kind"]
+    _speech_busy = True
+    try:
+        if kind == "ask":
+            _run_ask_session()
+        elif kind == "breathing":
+            tech = COACH_TECHNIQUES[item["tech_idx"]]
+            _ensure_coach_voice_assets()
+            run_coach_session(tech)
+        elif kind == "advice":
+            _run_advice()
+    finally:
+        _release_mic()
+        _speech_busy = False
+
+
+def open_coach_menu():
+    """Entry point bound to btnC. Loops until Btn A is pressed for back.
+    While inside, _speech_busy gates the announcer off the I2S0 bus."""
+    global _speech_busy
+    _speech_busy = True
+    try:
+        while True:
+            _draw_coach_menu()
+            _coach_wait_release()
+
+            last_status = False
+            selected   = -1
+            while selected < 0:
+                if btnA.wasPressed():
+                    return
+                if _HAS_TOUCH:
+                    try:
+                        status = _touch.status()
+                    except Exception:
+                        status = False
+                    if status and not last_status:
+                        try:
+                            x, y = _touch.read()
+                        except Exception:
+                            x, y = 0, 0
+                        if y < 232:
+                            row = _coach_row_at(y)
+                            if row >= 0:
+                                _flash_row(row)
+                                selected = row
+                                break
+                    last_status = status
+                utime.sleep_ms(40)
+                _coach_feed_wdt()
+
+            _execute_menu_item(selected)
+    finally:
+        _speech_busy = False
+        # Returning to the dashboard — let the main loop redraw it.
+
+# -------------------------------------------------------
 # Boot sequence
 # -------------------------------------------------------
 
 # 0. Load flash cache — room has memory before any network call
 load_last_state()
 compute_room_metrics()
+
+# 0a. SD mount + diag log — speech features write WAVs to /sd when available,
+# /flash otherwise. Diag log accumulates per-boot under /flash/diag.log.
+_sd_ok = mount_sd()
+_diag_reset()
+_diag("boot — SD " + ("ok" if _sd_ok else "missing"))
 
 # 1. WiFi
 draw_wifi_menu()
@@ -1179,7 +2276,15 @@ save_last_state()
 while True:
     now = utime.time()
 
-    # A → Dashboard, B → Coach, C → manual refresh
+    # Feed WDT every iteration. The hardware watchdog (armed at boot, 120 s
+    # timeout) auto-reboots if a native panic in I2S or speaker code slips
+    # past Python-level handling. Speech actions feed it too; this keeps
+    # the dashboard alive in long idle stretches.
+    if _wdt is not None:
+        try: _wdt.feed()
+        except Exception: pass
+
+    # A → Dashboard, B → Coach, C → coach menu (Ask / Breathe / Advice)
     if btnA.wasPressed() and current_page != 1:
         current_page = 1
         draw_frame()
@@ -1190,23 +2295,21 @@ while True:
         update_header_page2()
         update_page2()
     if btnC.wasPressed():
+        # Coach menu — Ask / Box Breathing / Quick Advice. While the menu
+        # is open, _speech_busy keeps the proactive announcer off the
+        # shared I2S0 bus. On return, redraw whichever page was active —
+        # init_labels() must NOT be re-called here (would duplicate the
+        # M5TextBox instances created at boot).
         try:
-            last_temp     = round(env3.temperature, 1)
-            last_humidity = round(env3.humidity, 1)
-            last_motion   = pir.state
-            last_tvoc     = tvoc.TVOC
-            last_eco2     = tvoc.eCO2
-            try:
-                last_pressure      = round(env3.pressure, 1)
-                last_pressure_text = str(int(last_pressure))
-            except: pass
-            data_source = "live"
-            compute_room_metrics()
-        except: pass
+            open_coach_menu()
+        except Exception as e:
+            print("coach menu error:", e)
         if current_page == 1:
+            draw_frame()
             update_all()
         else:
-            update_clock_dot()
+            draw_page2_frame()
+            update_header_page2()
             update_page2()
 
     # Clock update every second

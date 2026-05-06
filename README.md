@@ -122,6 +122,14 @@ The room's current human-readable identity — a short label that summarises how
 | PIR motion sensor | `unit.PIR` | PORTB |
 | TVOC / eCO2 sensor | `unit.TVOC` | PORTA |
 
+**Buttons**
+
+| Button | Action |
+|--------|--------|
+| **A** | Page 1 — Dashboard (sensor tiles, readiness / recovery / strain) |
+| **B** | Page 2 — Coach status (action recommendation, score chips) |
+| **C** | Coach menu — Ask / Box Breathing / Quick Advice (see *Voice + Coach* below) |
+
 **Device screenshots**
 
 | Dashboard | WiFi menu |
@@ -141,12 +149,19 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 | `POST` | `/events` | Receive structured device event logs (boot, WiFi, alerts, sync) |
 | `GET` | `/weather` | Return current outdoor weather from OpenWeatherMap |
 | `GET` | `/health` | Liveness check used by Cloud Run |
+| `POST` | `/speech/stt` | Whisper transcription — accepts base64 WAV, returns transcript |
+| `POST` | `/speech/tts` | OpenAI TTS — `?profile=m5stack` re-encodes to 16 kHz / 16-bit / mono so `speaker.playWAV` accepts it |
+| `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent with current sensor snapshot → WHOOP-style one-line answer + queued TTS audio |
+| `GET` | `/speech/proactive` | Drains pending audio queue, otherwise evaluates the trigger catalog (see *Proactive announcements* below) |
 
 **Services**
 - `telemetry_service` — normalises the device payload, derives `air_quality_label` (Good / Moderate / Poor / Hazardous), fetches outdoor weather, and writes the enriched record to BigQuery
 - `bigquery_service` — streaming inserts and parameterised queries against the `weather_records` table
 - `weather_service` — fetches current outdoor weather from OpenWeatherMap and maps it into `outdoor_temp`, `outdoor_humidity`, `outdoor_weather`, `outdoor_icon`, `weather_status`
 - `auth_service` — validates the shared device token on ingest requests
+- `stt_service` / `tts_service` — Whisper transcription and OpenAI TTS for voice I/O
+- `agent_service` — single source of truth for `/speech/ask`. Builds a JSON snapshot of current readings + 24 h aggregates + 3-day forecast, sends it to `gpt-4o-mini` with a WHOOP-style system prompt, returns a one-line answer. On timeout / API error / missing key, falls back to a generic deflection so the device never stalls
+- `proactive_service` — trigger-catalog evaluator for the announcer (cooldowns enforced via BigQuery event logs)
 
 **Data stored per record**
 
@@ -243,7 +258,83 @@ curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&forc
 
 - Backend cooldowns are authoritative. The device has no per-trigger memory.
 - The audio is re-encoded to 16 kHz / 16-bit / mono on the backend (`convert_wav_for_m5stack`). OpenAI TTS's native 24 kHz output is silently rejected by `speaker.playWAV` on UIFlow1.
-- Microphone (STT / voice ASK) is intentionally **not used** in `main_project.m5f` yet — the M5Stack Core2's PDM mic and speaker share the I2S0 peripheral, and switching directions inside one Python handler resets the device. Voice ASK lives in a separate test script (`device/speech_debug.py`) until the hardware path is sorted out.
+- The announcer is gated by a `_speech_busy` flag — while a Btn-C coach action is running, `announce_tick()` returns early so its `speaker.playWAV` cannot collide on I2S0 with an in-flight mic record (see *Voice + Coach* below).
+
+---
+
+## Voice + Coach (interactive)
+
+A touch coach menu lives under **Btn C**. It bundles three speech-driven actions one tap away — ask the agent a question, run a guided breathing session, or pull a quick advice line. All of this is inlined in `device/main_project.m5f` (no extra modules to flash).
+
+### Btn C — Coach Menu
+
+```
+┌─────────────────────────────────────┐
+│  Coach                       A back │  header
+│  ─────────────────────────────────  │
+│  Tap a row to start                 │  hint
+│ ┃ Ask                               │
+│   Weather, room, anything           │
+│ ┃ Box Breathing                     │
+│   Focus + reset                     │
+│ ┃ Quick Advice                      │
+│   A line for now                    │
+└─────────────────────────────────────┘
+```
+
+Three rows, each ~40 px tall, drawn at `y=98 / 142 / 186`. Tap a row → the action runs and the menu redraws on completion. Btn A returns to whichever page (Dashboard / Coach status) the user came from.
+
+### Action 1 — Voice Ask
+
+```
+mic record (5 s)                ─► /speech/stt   (Whisper transcription)
+        │                                │
+        ▼                                ▼
+   raw I2S(NUM0,                    transcript text
+    MASTER_PDM, …)                       │
+                                         ▼
+                              /speech/ask  (gpt-4o-mini agent)
+                                         │
+                                         ▼
+                         WHOOP-style one-line answer
+                                         │
+                                         ▼
+                              /speech/tts?profile=m5stack
+                                         │
+                                         ▼
+                          16 kHz / 16-bit / mono WAV → speaker.playWAV
+```
+
+The agent sees a JSON snapshot of `current` readings (incl. enriched `room_state`, `recovery_score`, `air_strain`), `last_24h` aggregates (min/max temp, humidity, eCO2, AQ), and the 3-day `forecast`. System prompt instructs short, factual, one-sentence answers — units in °C / % / ppb / ppm, no filler.
+
+Timeouts / API errors / missing key fall back to a generic deflection — the device never stalls on the LLM.
+
+### Action 2 — Box Breathing
+
+4 cycles × `(INHALE 4 s, HOLD 4 s, EXHALE 4 s, HOLD 4 s)`. The orb is a single solid coral disc (no halo) that grows during inhale, holds at max, shrinks during exhale, holds at min. Smoothstep easing for a natural breath cadence (`progress * progress * (3 - 2 * progress)`).
+
+- Phase label at the top, spoken phase cue at each transition.
+- Big countdown digit just below the orb.
+- Cycle progress dots at the bottom.
+- **Cancel anytime** with Btn A or any touch tap. The first run pre-bakes the 3 voice cues (`coach_inhale.wav` / `coach_hold.wav` / `coach_exhale.wav`) so subsequent sessions play offline.
+
+### Action 3 — Quick Advice
+
+Calls `https://api.adviceslip.com/advice` (free, no auth) and renders the line wrap-formatted on the screen. Falls back to a small set of baked-in reminders if the call fails.
+
+### I2S0 mic ↔ speaker handoff
+
+The Core2's PDM mic and speaker share peripheral `I2S0`. Switching direction inside one Python handler used to reset the device. Solution:
+
+- **Speaker → mic:** `_release_speaker()` waits ≥800 ms for DMA to drain, then `_init_mic()` constructs a fresh `I2S(NUM0, mode=MASTER_PDM, ...)` instance — that forcibly reclaims the peripheral.
+- **Mic → speaker:** `_release_mic()` calls `deinit()` on the I2S handle; the next `speaker.playWAV(...)` reconfigures `I2S0` for output.
+- **Announcer collision:** `_speech_busy` is set to `True` for the entire duration of any Btn-C action. `announce_tick()` early-returns while the flag is set, so the proactive announcer cannot grab the speaker during a mic record.
+
+This bypasses the high-level `MicrophonePDM` module — it does not work for direction switching on UIFlow1.
+
+### Hardware safety net
+
+A 120 s `WDT` is armed at boot and fed every main-loop iteration plus inside speech actions. If a native panic in I2S or speaker code escapes Python, the device auto-reboots within 2 minutes. Diagnostic output goes to `/flash/diag.log` (reset on each boot).
 
 ---
 

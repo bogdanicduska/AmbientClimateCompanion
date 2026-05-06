@@ -42,7 +42,7 @@ def _fallback_response(config, transcript: str = "", confidence: float = 0.0, re
 def run_speech_query(device_id: str, audio_b64: str, audio_format: str, config, output_format: str = "mp3") -> Dict[str, Any]:
     """End-to-end: audio in → transcript → answer → audio out."""
     from app.services.stt_service import transcribe_audio
-    from app.services.ask_service import answer_question
+    from app.services.agent_service import answer_question
     from app.services.tts_service import synthesize_speech
 
     # --- STT ---

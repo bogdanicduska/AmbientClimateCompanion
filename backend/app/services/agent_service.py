@@ -1,12 +1,9 @@
-"""LLM fallback for /speech/ask. The regex router in ask_service handles
-the deterministic question patterns; anything that returns intent='unknown'
-falls through here. We pass a JSON snapshot of current + recent room
-conditions plus the local forecast to gpt-4o-mini and let it produce a
-short, WHOOP-style answer.
+"""Single source of truth for /speech/ask. Pulls a JSON snapshot of
+current + recent room conditions plus the local forecast, sends it to
+gpt-4o-mini, and returns a short WHOOP-style answer.
 
-Errors and timeouts return (None, snapshot) so the caller can fall back
-to the original generic deflection — the device must never hang waiting
-on the LLM."""
+Errors and timeouts fall back to a generic deflection so the device
+never hangs waiting on the LLM."""
 
 import json
 import time
@@ -117,7 +114,30 @@ def _build_snapshot(device_id: str, config) -> Dict[str, Any]:
     return snapshot
 
 
-def agent_answer(device_id: str, question: str, config) -> Tuple[Optional[str], Dict[str, Any]]:
+def answer_question(device_id: str, question: str, config) -> Dict[str, Any]:
+    """Public entry point used by /speech/ask. Calls the LLM with current
+    sensor context and returns a structured response. On any failure
+    (no API key, timeout, API error, empty completion), falls back to a
+    generic deflection so the device never stalls."""
+    answer, snapshot = _agent_answer(device_id, question, config)
+
+    if not answer:
+        return {
+            "intent":        "unknown",
+            "answer_source": "fallback",
+            "answer":        "I am not sure how to answer that. Try asking about temperature, humidity, air quality, or recovery.",
+            "data_snapshot": snapshot,
+        }
+
+    return {
+        "intent":        "agent",
+        "answer_source": "agent",
+        "answer":        answer,
+        "data_snapshot": snapshot,
+    }
+
+
+def _agent_answer(device_id: str, question: str, config) -> Tuple[Optional[str], Dict[str, Any]]:
     """Return (answer_text, snapshot). answer_text is None if the LLM call
     failed for any reason — caller should fall back to the generic
     deflection so the device doesn't stall."""
