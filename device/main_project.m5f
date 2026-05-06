@@ -120,7 +120,7 @@ _ann_last_motion_poll = 0
 _ann_motion_pending   = False
 
 # -------------------------------------------------------
-# Speech / Coach configuration  (touch menu under btnC: Ask, Breathe, Advice)
+# Speech / Coach configuration  (touch menu under btnC: Ask, Breathe, Meditation)
 # -------------------------------------------------------
 SPEECH_BACKEND   = BACKEND_BASE_URL + "/speech"
 WAV_RATE         = 16000
@@ -164,8 +164,8 @@ COACH_TECHNIQUES = (
 # for the recommendation hero on top, footer at the bottom).
 COACH_MENU_ITEMS = (
     {"kind": "ask"},
-    {"kind": "breathing", "tech_idx": 0},
-    {"kind": "advice"},
+    {"kind": "breathing",   "tech_idx": 0},
+    {"kind": "meditation",  "session_id": "calm"},
 )
 COACH_ROW_TOP    = 98
 COACH_ROW_HEIGHT = 40
@@ -175,14 +175,6 @@ COACH_ROW_BG     = 0x0F1828
 COACH_ROW_FLASH  = 0xFE6E2E
 COACH_TITLE_DIM  = 0x556677
 COACH_SUBT_DIM   = 0x8899AA
-
-ADVICE_URL = "https://api.adviceslip.com/advice"
-ADVICE_FALLBACKS = (
-    "Drink a glass of water.",
-    "Open a window for a minute.",
-    "Stand up and stretch briefly.",
-    "Take three slow breaths.",
-)
 
 # Pre-baked TTS prompts for the breathing session — cached lazily on first
 # Box session so subsequent runs play offline.
@@ -197,7 +189,6 @@ _MIC = None
 _speaker_used         = False
 _speaker_last_play_ms = 0
 _speech_busy          = False
-_advice_fallback_idx  = 0
 _sd_ok                = False  # set during boot
 
 # Detect available large fonts (UIFlow1 builds vary).
@@ -295,8 +286,8 @@ def announce_tick():
     only issues a network call when the schedule or motion says so, never
     during quiet hours.
 
-    Skipped entirely while a speech action (Ask / Breathing / Advice) is
-    running so the announcer's speaker.playWAV cannot collide with the
+    Skipped entirely while a speech action (Ask / Breathing / Meditation)
+    is running so the announcer's speaker.playWAV cannot collide with the
     mic record or with our own answer playback on the shared I2S0 bus."""
     global _ann_last_idle_poll, _ann_last_motion_poll, _ann_motion_pending
 
@@ -1888,7 +1879,7 @@ def run_coach_session(tech):
     _coach_wait_dismiss(3000)
 
 
-# --- Advice -------------------------------------------------------------
+# --- Meditation ---------------------------------------------------------
 
 def _wrap_text(text, max_chars):
     words = text.split(" ")
@@ -1907,57 +1898,214 @@ def _wrap_text(text, max_chars):
     return lines
 
 
-def _fetch_advice():
-    global _advice_fallback_idx
+def _meditation_prompt_path(prompt_id):
+    """Per-prompt cache path — different namespace from coach voice cues."""
+    base = "/sd/" if _sd_ok else "/flash/"
+    return base + "med_" + str(prompt_id) + ".wav"
+
+
+def _ensure_meditation_prompts(prompts):
+    """Cache the TTS for every prompt to local storage on first run.
+    Returns the list of {path, time_s} for the prompts that were cached
+    successfully — any that failed are silently dropped so the session
+    can still run with reduced narration."""
+    cached = []
+    for p in prompts:
+        pid  = p.get("id")
+        text = p.get("text", "")
+        time_s = p.get("time_s", 0)
+        if not pid or not text:
+            continue
+
+        path = _meditation_prompt_path(pid)
+        try:
+            uos.stat(path)
+            cached.append({"path": path, "time_s": time_s})
+            continue
+        except Exception:
+            pass
+
+        ok, info = fetch_tts_wav(text)
+        if not ok:
+            _diag("med prompt fetch failed: " + str(pid) + " " + str(info))
+            continue
+        # fetch_tts_wav saved to WAV_PATHS — copy to the meditation-specific
+        # path so a later answer playback or another prompt doesn't overwrite it.
+        try:
+            with open(info, "rb") as src:
+                with open(path, "wb") as dst:
+                    while True:
+                        chunk = src.read(2048)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+            cached.append({"path": path, "time_s": time_s})
+        except Exception as e:
+            _diag("med prompt copy failed: " + str(e)[:40])
+        gc.collect()
+    return cached
+
+
+def _play_meditation_prompt(path):
+    """Fire-and-forget WAV play. DMA continues after this returns so the
+    orb keeps animating while the prompt narrates."""
+    global _speaker_used, _speaker_last_play_ms
     try:
-        r = urequests.get(ADVICE_URL)
-        if r.status_code == 200:
-            data = r.json()
-            r.close()
-            slip = data.get("slip", {}) if isinstance(data, dict) else {}
-            text = slip.get("advice", "")
-            if text:
-                return text, True
-        else:
-            r.close()
+        speaker.playWAV(path,
+                        rate=WAV_RATE,
+                        data_format=speaker.F16B,
+                        channel=speaker.CHN_R,
+                        volume=PLAY_VOLUME)
+        _speaker_used         = True
+        _speaker_last_play_ms = utime.ticks_ms()
     except Exception as e:
-        print("advice fetch err:", e)
-    fb = ADVICE_FALLBACKS[_advice_fallback_idx % len(ADVICE_FALLBACKS)]
-    _advice_fallback_idx += 1
-    return fb, False
+        _diag("med prompt play err: " + str(e)[:40])
 
 
-def _draw_advice_card(text, online):
-    setScreenColor(COACH_BG)
-    lcd.font(_COACH_FONT_SM)
-    lcd.setCursor(8, 14)
-    lcd.setColor(ORB_COLOR)
-    lcd.print("Quick Advice" if online else "A reminder")
-    lcd.font(_COACH_FONT_MED)
-    lines = _wrap_text(text, 22)[:4]
-    total_h = len(lines) * 30
-    start_y = (240 - total_h) // 2
-    for i, line in enumerate(lines):
-        text_w = len(line) * 14
-        x      = max(8, (320 - text_w) // 2)
-        lcd.setCursor(x, start_y + i * 30)
-        lcd.setColor(PHASE_TEXT_COLOR)
-        lcd.print(line)
-    lcd.font(_COACH_FONT_SM)
-    lcd.setCursor(110, 218)
-    lcd.setColor(COACH_TITLE_DIM)
-    lcd.print("tap to continue")
+def _run_meditation(session_id="calm"):
+    """Fetch a meditation script from /speech/meditation, cache prompt
+    audios on first run, then render a slow-pulse orb while playing
+    prompts at scheduled times. Btn A or any touch tap cancels."""
+    _release_mic()
+    _release_speaker()
 
-
-def _run_advice():
+    # Loading card while we fetch the script + cache audio
     setScreenColor(COACH_BG)
     lcd.font(_COACH_FONT_MED)
     lcd.setCursor(20, 110)
     lcd.setColor(COACH_TITLE_DIM)
-    lcd.print("Fetching...")
-    text, online = _fetch_advice()
-    _draw_advice_card(text, online)
-    _coach_wait_dismiss(30000)
+    lcd.print("Loading...")
+
+    try:
+        url = SPEECH_BACKEND + "/meditation?session=" + session_id
+        r = urequests.get(url, headers=_speech_auth_headers())
+        if r.status_code != 200:
+            r.close()
+            _draw_ask_status("Meditation HTTP " + str(r.status_code))
+            _coach_wait_dismiss(3000)
+            return
+        data = r.json()
+        r.close()
+        session = data.get("data", {}) if isinstance(data, dict) else {}
+    except Exception as e:
+        _draw_ask_status("Meditation error", str(e)[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    prompts = session.get("prompts") if session else None
+    if not prompts:
+        _draw_ask_status("No script", session_id[:35])
+        _coach_wait_dismiss(3000)
+        return
+
+    title       = session.get("title", "Meditation")
+    duration_s  = session.get("duration_s", 180)
+    breath_in   = session.get("breath_in_s",  6)
+    breath_out  = session.get("breath_out_s", 6)
+    cycle_s     = max(2, breath_in + breath_out)
+
+    # Cache prompts (first run takes a few seconds; later runs are instant)
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 100)
+    lcd.setColor(ORB_COLOR)
+    lcd.print(title[:30])
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 140)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("Preparing audio...")
+
+    cached = _ensure_meditation_prompts(prompts)
+    if not cached:
+        _draw_ask_status("Prompt cache failed")
+        _coach_wait_dismiss(3000)
+        return
+
+    # Title bar + cancel hint
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 14)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(title[:30])
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(20, 215)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("A or tap to stop")
+
+    # Drain stale presses / touches from the loading screen.
+    try: btnA.wasPressed()
+    except Exception: pass
+    if _HAS_TOUCH:
+        _coach_wait_release()
+
+    t_start         = utime.ticks_ms()
+    next_prompt_idx = 0
+    aborted         = False
+    last_radius     = -1
+
+    try:
+        while True:
+            if _coach_check_abort():
+                aborted = True
+                break
+
+            elapsed_s = utime.ticks_diff(utime.ticks_ms(), t_start) / 1000.0
+            if elapsed_s >= duration_s:
+                break
+
+            # Fire any prompts that have come due since the last frame.
+            while next_prompt_idx < len(cached) and elapsed_s >= cached[next_prompt_idx]["time_s"]:
+                _play_meditation_prompt(cached[next_prompt_idx]["path"])
+                next_prompt_idx += 1
+
+            # Slow breath rhythm: smoothstep up over breath_in, smoothstep
+            # down over breath_out. The orb is purely a focus point here —
+            # not a strict cue like in Box Breathing.
+            cycle_pos = elapsed_s % cycle_s
+            if cycle_pos < breath_in:
+                t = cycle_pos / breath_in if breath_in else 1.0
+                radius = int(COACH_R_MIN + (COACH_R_MAX - COACH_R_MIN) * _smoothstep(t))
+            else:
+                t = (cycle_pos - breath_in) / breath_out if breath_out else 1.0
+                radius = int(COACH_R_MAX + (COACH_R_MIN - COACH_R_MAX) * _smoothstep(t))
+
+            # Only redraw the orb when the radius actually changes —
+            # halves the LCD work in the steady state.
+            if radius != last_radius:
+                _coach_draw_orb(radius)
+                last_radius = radius
+
+            _coach_feed_wdt()
+            utime.sleep_ms(150)
+    except Exception as e:
+        _diag("meditation loop err: " + str(e)[:40])
+
+    if aborted:
+        setScreenColor(COACH_BG)
+        lcd.font(_COACH_FONT_MED)
+        lcd.setCursor(20, 100)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print("Stopped")
+        lcd.setCursor(20, 140)
+        lcd.setColor(0x556677)
+        lcd.print(title[:38])
+        utime.sleep(1)
+        if _HAS_TOUCH:
+            _coach_wait_release()
+        return
+
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_MED)
+    lcd.setCursor(20, 80)
+    lcd.setColor(ORB_COLOR)
+    lcd.print("Done.")
+    lcd.setCursor(20, 116)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print(title[:38])
+    lcd.setCursor(20, 152)
+    lcd.setColor(0x556677)
+    lcd.print("Tap to continue")
+    _coach_wait_dismiss(3000)
 
 
 # --- Voice Ask ----------------------------------------------------------
@@ -2073,8 +2221,8 @@ def _menu_item_display(item):
     if kind == "breathing":
         tech = COACH_TECHNIQUES[item["tech_idx"]]
         return tech["name"], tech["subtitle"]
-    if kind == "advice":
-        return "Quick Advice", "A line for now"
+    if kind == "meditation":
+        return "Meditation",   "3 min — settle in"
     return "", ""
 
 
@@ -2147,8 +2295,8 @@ def _execute_menu_item(row):
             tech = COACH_TECHNIQUES[item["tech_idx"]]
             _ensure_coach_voice_assets()
             run_coach_session(tech)
-        elif kind == "advice":
-            _run_advice()
+        elif kind == "meditation":
+            _run_meditation(item.get("session_id", "calm"))
     finally:
         _release_mic()
         _speech_busy = False
@@ -2284,7 +2432,7 @@ while True:
         try: _wdt.feed()
         except Exception: pass
 
-    # A → Dashboard, B → Coach, C → coach menu (Ask / Breathe / Advice)
+    # A → Dashboard, B → Coach, C → coach menu (Ask / Breathe / Meditation)
     if btnA.wasPressed() and current_page != 1:
         current_page = 1
         draw_frame()
@@ -2295,7 +2443,7 @@ while True:
         update_header_page2()
         update_page2()
     if btnC.wasPressed():
-        # Coach menu — Ask / Box Breathing / Quick Advice. While the menu
+        # Coach menu — Ask / Box Breathing / Meditation. While the menu
         # is open, _speech_busy keeps the proactive announcer off the
         # shared I2S0 bus. On return, redraw whichever page was active —
         # init_labels() must NOT be re-called here (would duplicate the

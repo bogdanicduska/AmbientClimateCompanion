@@ -128,7 +128,7 @@ The room's current human-readable identity — a short label that summarises how
 |--------|--------|
 | **A** | Page 1 — Dashboard (sensor tiles, readiness / recovery / strain) |
 | **B** | Page 2 — Coach status (action recommendation, score chips) |
-| **C** | Coach menu — Ask / Box Breathing / Quick Advice (see *Voice + Coach* below) |
+| **C** | Coach menu — Ask / Box Breathing / Meditation (see *Voice + Coach* below) |
 
 **Device screenshots**
 
@@ -153,6 +153,8 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 | `POST` | `/speech/tts` | OpenAI TTS — `?profile=m5stack` re-encodes to 16 kHz / 16-bit / mono so `speaker.playWAV` accepts it |
 | `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent with current sensor snapshot → WHOOP-style one-line answer + queued TTS audio |
 | `GET` | `/speech/proactive` | Drains pending audio queue, otherwise evaluates the trigger catalog (see *Proactive announcements* below) |
+| `GET` | `/speech/meditation` | Returns a meditation session config (title, duration, breath cadence, timed prompts) |
+| `GET` | `/speech/meditation/sessions` | Catalog of available meditation session ids |
 
 **Services**
 - `telemetry_service` — normalises the device payload, derives `air_quality_label` (Good / Moderate / Poor / Hazardous), fetches outdoor weather, and writes the enriched record to BigQuery
@@ -162,6 +164,7 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 - `stt_service` / `tts_service` — Whisper transcription and OpenAI TTS for voice I/O
 - `agent_service` — single source of truth for `/speech/ask`. Builds a JSON snapshot of current readings + 24 h aggregates + 3-day forecast, sends it to `gpt-4o-mini` with a WHOOP-style system prompt, returns a one-line answer. On timeout / API error / missing key, falls back to a generic deflection so the device never stalls
 - `proactive_service` — trigger-catalog evaluator for the announcer (cooldowns enforced via BigQuery event logs)
+- `meditation_service` — script catalog for guided meditation sessions (id, duration, breath cadence, timed text prompts). The device caches each prompt's TTS via `/speech/tts` on first run and plays them at scheduled times during the session
 
 **Data stored per record**
 
@@ -264,7 +267,7 @@ curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&forc
 
 ## Voice + Coach (interactive)
 
-A touch coach menu lives under **Btn C**. It bundles three speech-driven actions one tap away — ask the agent a question, run a guided breathing session, or pull a quick advice line. All of this is inlined in `device/main_project.m5f` (no extra modules to flash).
+A touch coach menu lives under **Btn C**. It bundles three speech-driven actions one tap away — ask the agent a question, run a guided breathing session, or run a guided meditation. All of this is inlined in `device/main_project.m5f` (no extra modules to flash).
 
 ### Btn C — Coach Menu
 
@@ -277,8 +280,8 @@ A touch coach menu lives under **Btn C**. It bundles three speech-driven actions
 │   Weather, room, anything           │
 │ ┃ Box Breathing                     │
 │   Focus + reset                     │
-│ ┃ Quick Advice                      │
-│   A line for now                    │
+│ ┃ Meditation                        │
+│   3 min — settle in                 │
 └─────────────────────────────────────┘
 ```
 
@@ -318,9 +321,13 @@ Timeouts / API errors / missing key fall back to a generic deflection — the de
 - Cycle progress dots at the bottom.
 - **Cancel anytime** with Btn A or any touch tap. The first run pre-bakes the 3 voice cues (`coach_inhale.wav` / `coach_hold.wav` / `coach_exhale.wav`) so subsequent sessions play offline.
 
-### Action 3 — Quick Advice
+### Action 3 — Meditation
 
-Calls `https://api.adviceslip.com/advice` (free, no auth) and renders the line wrap-formatted on the screen. Falls back to a small set of baked-in reminders if the call fails.
+Guided session driven by a backend script catalog (`/speech/meditation`). Each session config carries a title, duration, breath cadence, and a list of timed text prompts. On first run the device fetches each prompt as TTS audio via `/speech/tts?profile=m5stack` and caches them locally (`/sd/med_<id>.wav`); subsequent runs play offline.
+
+During the session the orb pulses on the session's slower cadence (e.g. 6 s in / 6 s out) while prompts narrate at their scheduled timestamps. The orb is purely a focus point — not a strict breath cue. Cancel anytime with **Btn A or any touch tap**.
+
+The default session is `calm` — 3 minutes, 6 prompts including "Settle in", "Notice your breath", "Soften your shoulders", "Let your jaw release". New session types are added on the backend (see `meditation_service.py`); no device code changes needed.
 
 ### I2S0 mic ↔ speaker handoff
 
