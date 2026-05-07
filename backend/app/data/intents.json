@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "intents": [
+    {
+      "id": "weather_now",
+      "description": "Current outdoor weather: temperature, sky condition, humidity right now.",
+      "examples": [
+        "what's the weather",
+        "what's it like outside",
+        "is it cold outside",
+        "is it raining now",
+        "how warm is it outside"
+      ]
+    },
+    {
+      "id": "weather_yesterday",
+      "description": "Past outdoor weather: yesterday, this morning, earlier today, or any prior point.",
+      "examples": [
+        "what was the weather yesterday",
+        "how was it outside this morning",
+        "did it rain yesterday",
+        "was it warmer yesterday",
+        "what did the weather do earlier"
+      ]
+    },
+    {
+      "id": "weather_tomorrow",
+      "description": "Forecast for tomorrow or the rest of today: rain, temperature, storm warnings.",
+      "examples": [
+        "what's the weather tomorrow",
+        "will it rain tomorrow",
+        "do I need an umbrella",
+        "is a storm coming",
+        "what's the forecast"
+      ]
+    },
+    {
+      "id": "room_now",
+      "description": "Current indoor conditions: temperature, humidity, air quality, eCO2 right now.",
+      "examples": [
+        "how's my room",
+        "what's the temperature inside",
+        "how humid is it in here",
+        "how's the air quality",
+        "is the air clean"
+      ]
+    },
+    {
+      "id": "room_history",
+      "description": "Past indoor conditions over the last 24 hours: max/min temp, humidity, peak air quality.",
+      "examples": [
+        "how was the room earlier",
+        "what was the highest temperature today",
+        "when was the air worst",
+        "has it been humid",
+        "how did the room change today"
+      ]
+    },
+    {
+      "id": "coach_readiness",
+      "description": "Coach metrics: room readiness for focus, recovery score for rest, air strain score.",
+      "examples": [
+        "is the room good for focus",
+        "what's my recovery score",
+        "how's the readiness",
+        "is this a good place to sleep",
+        "what's the air strain"
+      ]
+    },
+    {
+      "id": "coach_advice",
+      "description": "Actionable suggestion based on current conditions: open window, humidify, ventilate, rest.",
+      "examples": [
+        "should I open the window",
+        "do I need to humidify",
+        "what should I do",
+        "is it time to take a break",
+        "anything I should change"
+      ]
+    },
+    {
+      "id": "unknown",
+      "description": "Off-topic, ambiguous, or anything the snapshot cannot answer. Triggers a generic deflection.",
+      "examples": [
+        "what time is the meeting",
+        "play me a song",
+        "tell me a joke",
+        "who won the game"
+      ]
+    }
+  ]
+}

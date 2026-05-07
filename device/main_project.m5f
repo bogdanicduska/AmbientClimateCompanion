@@ -113,11 +113,16 @@ ANNOUNCE_QUIET_START = 23         # local hour
 ANNOUNCE_QUIET_END   = 7          # local hour
 ANNOUNCE_WAV_RATE    = 16000      # backend's m5stack profile produces this
 ANNOUNCE_VOLUME      = 6
+# btnA on the dashboard fires this trigger via ?force=, bypassing backend
+# cooldowns. Set to a real trigger id from proactive_service.PROACTIVE_TRIGGERS.
+ANNOUNCE_FORCE_TRIGGER = "weather_announcement"
 
 # Announcer state
 _ann_last_idle_poll   = 0
 _ann_last_motion_poll = 0
 _ann_motion_pending   = False
+_ann_last_skip_reason = ""   # debounce repeated skip prints
+_ann_last_skip_ts     = 0
 
 # -------------------------------------------------------
 # Speech / Coach configuration  (touch menu under btnC: Ask, Breathe, Meditation)
@@ -210,7 +215,10 @@ except AttributeError:
 
 
 def _ann_local_hour():
-    return (utime.localtime()[3] + TZ_OFFSET) % 24
+    # ntp_sync() already stores LOCAL time in the RTC (it adds TZ_OFFSET before
+    # calling RTC().datetime). fmt_time() and _is_evening() rely on that too —
+    # do NOT add TZ_OFFSET again or the announcer will be off by TZ_OFFSET hours.
+    return utime.localtime()[3]
 
 
 def _ann_is_quiet():
@@ -220,19 +228,25 @@ def _ann_is_quiet():
     return h >= ANNOUNCE_QUIET_START or h < ANNOUNCE_QUIET_END
 
 
-def _ann_do_poll():
+def _ann_do_poll(force_trigger=None):
     """One-shot proactive poll → play returned WAV. All errors swallowed —
-    a backend hiccup or transient WiFi drop must never crash the main loop."""
+    a backend hiccup or transient WiFi drop must never crash the main loop.
+    If force_trigger is set, sends ?force=<trigger_id> so the backend
+    bypasses cooldown and condition checks (used by the btnA demo path)."""
     try:
         import urequests
     except Exception as e:
-        print("announce: urequests import failed:", e)
+        _diag("[announce] urequests import failed: " + str(e)[:60])
         return
 
     try:
         url = ANNOUNCE_BACKEND + "?device_id=" + DEVICE_ID + "&raw=1"
+        if force_trigger:
+            url += "&force=" + force_trigger
+        _diag("[announce] GET " + url)
         r = urequests.get(url, headers={"Authorization": "Bearer " + AUTH_TOKEN})
         status = r.status_code
+        _diag("[announce] status=" + str(status))
 
         if status == 204:
             r.close()
@@ -240,14 +254,13 @@ def _ann_do_poll():
 
         if status != 200:
             r.close()
-            print("announce poll status:", status)
             return
 
         try:
             content = r.content
         except Exception as e:
             r.close()
-            print("announce body read failed:", e)
+            _diag("[announce] body read failed: " + str(e)[:60])
             return
         r.close()
 
@@ -255,7 +268,7 @@ def _ann_do_poll():
             with open(ANNOUNCE_PATH, "wb") as f:
                 f.write(content)
         except Exception as e:
-            print("announce write failed:", e)
+            _diag("[announce] write failed: " + str(e)[:60])
             return
         del content
         gc.collect()
@@ -266,12 +279,12 @@ def _ann_do_poll():
                             data_format=speaker.F16B,
                             channel=speaker.CHN_R,
                             volume=ANNOUNCE_VOLUME)
-            print("announce played")
+            _diag("[announce] played")
         except Exception as e:
-            print("announce playWAV failed:", e)
+            _diag("[announce] playWAV failed: " + str(e)[:60])
 
     except Exception as e:
-        print("announce poll error:", e)
+        _diag("[announce] poll error: " + str(e)[:60])
 
 
 def announce_on_motion():
@@ -279,6 +292,17 @@ def announce_on_motion():
     PIR re-fires within 30 s don't all hit the network."""
     global _ann_motion_pending
     _ann_motion_pending = True
+
+
+def _ann_log_skip(reason):
+    """Log a skip reason at most once every 30 s per reason — keeps the
+    diag log readable without flooding it."""
+    global _ann_last_skip_reason, _ann_last_skip_ts
+    now_s = utime.time()
+    if reason != _ann_last_skip_reason or (now_s - _ann_last_skip_ts) >= 30:
+        _diag("[announce] skip: " + reason)
+        _ann_last_skip_reason = reason
+        _ann_last_skip_ts     = now_s
 
 
 def announce_tick():
@@ -292,26 +316,62 @@ def announce_tick():
     global _ann_last_idle_poll, _ann_last_motion_poll, _ann_motion_pending
 
     if _speech_busy:
+        _ann_log_skip("speech_busy")
         return
 
     if _ann_is_quiet():
         _ann_motion_pending = False
+        _ann_log_skip("quiet_hours h=" + str(_ann_local_hour()))
         return
 
     now_s = utime.time()
+
+    # Continuous-presence re-arm: PIR latches HIGH for several seconds, so a
+    # person staying in the room never produces another 0->1 edge. Re-arm the
+    # motion poll if PIR is still HIGH and the debounce window has fully
+    # elapsed since the last motion poll. Backend cooldowns still rate-limit
+    # what gets spoken.
+    if (last_motion == 1
+            and not _ann_motion_pending
+            and (now_s - _ann_last_motion_poll) >= (ANNOUNCE_DEBOUNCE_S * 2)):
+        _ann_motion_pending = True
+
     should_poll = False
 
     if _ann_motion_pending:
         if (now_s - _ann_last_motion_poll) >= ANNOUNCE_DEBOUNCE_S:
             should_poll          = True
             _ann_last_motion_poll = now_s
+            _diag("[announce] motion poll")
+        else:
+            wait_s = ANNOUNCE_DEBOUNCE_S - (now_s - _ann_last_motion_poll)
+            _ann_log_skip("motion debounce wait=" + str(int(wait_s)) + "s")
         _ann_motion_pending = False
     elif (now_s - _ann_last_idle_poll) >= ANNOUNCE_IDLE_POLL_S:
         should_poll = True
+        _diag("[announce] idle poll")
+    else:
+        wait_s = ANNOUNCE_IDLE_POLL_S - (now_s - _ann_last_idle_poll)
+        _ann_log_skip("idle wait=" + str(int(wait_s)) + "s")
 
     if should_poll:
         _ann_last_idle_poll = now_s
         _ann_do_poll()
+
+
+def force_announce_now():
+    """Defense / debug helper. Bypasses _speech_busy and quiet hours on the
+    device, AND sends ?force=ANNOUNCE_FORCE_TRIGGER to bypass the backend's
+    cooldown + condition check too. Always fires (modulo network errors)."""
+    global _speech_busy, _ann_motion_pending, _ann_last_motion_poll
+    _diag("[announce] FORCE poll requested trigger=" + ANNOUNCE_FORCE_TRIGGER)
+    _speech_busy           = False
+    _ann_motion_pending    = False
+    _ann_last_motion_poll  = 0
+    try:
+        _ann_do_poll(force_trigger=ANNOUNCE_FORCE_TRIGGER)
+    except Exception as e:
+        _diag("[announce] force poll error: " + str(e)[:60])
 
 # -------------------------------------------------------
 # State
@@ -2437,6 +2497,12 @@ while True:
         current_page = 1
         draw_frame()
         update_all()
+    # btnA on the dashboard = force a proactive poll right now. Bypasses
+    # _speech_busy and PIR debounce so demos / defense don't depend on
+    # waving at the sensor and waiting for the right cadence to align.
+    if btnA.wasPressed():
+        force_announce_now()
+
     if btnB.wasPressed() and current_page != 2:
         current_page = 2
         draw_page2_frame()

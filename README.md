@@ -151,7 +151,7 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 | `GET` | `/health` | Liveness check used by Cloud Run |
 | `POST` | `/speech/stt` | Whisper transcription — accepts base64 WAV, returns transcript |
 | `POST` | `/speech/tts` | OpenAI TTS — `?profile=m5stack` re-encodes to 16 kHz / 16-bit / mono so `speaker.playWAV` accepts it |
-| `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent with current sensor snapshot → WHOOP-style one-line answer + queued TTS audio |
+| `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent (intent classifier + answer in one structured-output call) with current + 24 h indoor + yesterday outdoor + 3-day forecast snapshot → WHOOP-style one-line answer + queued TTS audio |
 | `GET` | `/speech/proactive` | Drains pending audio queue, otherwise evaluates the trigger catalog (see *Proactive announcements* below) |
 | `GET` | `/speech/meditation` | Returns a meditation session config (title, duration, breath cadence, timed prompts) |
 | `GET` | `/speech/meditation/sessions` | Catalog of available meditation session ids |
@@ -162,7 +162,8 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 - `weather_service` — fetches current outdoor weather from OpenWeatherMap and maps it into `outdoor_temp`, `outdoor_humidity`, `outdoor_weather`, `outdoor_icon`, `weather_status`
 - `auth_service` — validates the shared device token on ingest requests
 - `stt_service` / `tts_service` — Whisper transcription and OpenAI TTS for voice I/O
-- `agent_service` — single source of truth for `/speech/ask`. Builds a JSON snapshot of current readings + 24 h aggregates + 3-day forecast, sends it to `gpt-4o-mini` with a WHOOP-style system prompt, returns a one-line answer. On timeout / API error / missing key, falls back to a generic deflection so the device never stalls
+- `agent_service` — single source of truth for `/speech/ask`. Builds a JSON snapshot of `current` readings, `last_24h` indoor aggregates, `outdoor_yesterday` aggregates (modal weather + min/max temp/humidity from BigQuery), and the 3-day `forecast`. Sends it to `gpt-4o-mini` along with the intent catalog and forces a structured `{intent, answer}` response via OpenAI's `json_schema` response format. On timeout / API error / parse failure / missing key, falls back to a generic deflection tagged `unknown` so the device never stalls
+- `agent_intents` — loads and validates `app/data/intents.json` once at import. Exposes `intent_ids()` (used as the JSON-schema enum so the LLM literally cannot return an unknown id) and `prompt_block()` (the compact id+description list rendered into the system prompt)
 - `proactive_service` — trigger-catalog evaluator for the announcer (cooldowns enforced via BigQuery event logs)
 - `meditation_service` — script catalog for guided meditation sessions (id, duration, breath cadence, timed text prompts). The device caches each prompt's TTS via `/speech/tts` on first run and plays them at scheduled times during the session
 
@@ -308,9 +309,48 @@ mic record (5 s)                ─► /speech/stt   (Whisper transcription)
                           16 kHz / 16-bit / mono WAV → speaker.playWAV
 ```
 
-The agent sees a JSON snapshot of `current` readings (incl. enriched `room_state`, `recovery_score`, `air_strain`), `last_24h` aggregates (min/max temp, humidity, eCO2, AQ), and the 3-day `forecast`. System prompt instructs short, factual, one-sentence answers — units in °C / % / ppb / ppm, no filler.
+The agent sees a JSON snapshot of:
 
-Timeouts / API errors / missing key fall back to a generic deflection — the device never stalls on the LLM.
+- `current` — latest indoor reading + enriched `room_state` / `room_readiness` / `recovery_score` / `air_strain`, plus the latest outdoor `temp` / `humidity` / `weather`
+- `last_24h` — indoor aggregates (min/max temp, humidity, eCO2, AQ)
+- `outdoor_yesterday` — outdoor aggregates from BigQuery for the previous UTC day (min/max temp, min/max humidity, modal weather string)
+- `forecast` — today + tomorrow + storm/umbrella flags
+
+The system prompt also includes the intent catalog (see *Intent classification* below). The LLM returns a structured `{intent, answer}` JSON via OpenAI's `json_schema` response format — answers stay short, factual, one or two sentences with units in °C / % / ppb / ppm and no filler.
+
+Timeouts / API errors / parse failures / missing key fall back to a generic deflection tagged `unknown` — the device never stalls on the LLM.
+
+### Intent classification
+
+Every `/speech/ask` response is tagged with one of eight intents from `backend/app/data/intents.json`. Adding a new intent = appending an entry to that JSON; the schema enum, the system-prompt block, and the test harness all pick it up automatically.
+
+| ID | What it covers |
+|----|----------------|
+| `weather_now` | Current outdoor temperature, sky condition, humidity |
+| `weather_yesterday` | Past outdoor weather — yesterday or earlier today (queried from BigQuery, not invented) |
+| `weather_tomorrow` | Forecast — tomorrow, rain, storms, umbrella |
+| `room_now` | Current indoor temp / humidity / air quality / eCO2 |
+| `room_history` | Past indoor conditions over the last 24 h (max/min/peak) |
+| `coach_readiness` | Readiness, recovery, air-strain scores |
+| `coach_advice` | Actionable suggestions (open window, humidify, take a break) |
+| `unknown` | Off-topic or unanswerable from the snapshot — triggers the deflection |
+
+How the routing actually works — single LLM round-trip:
+
+1. The backend builds the full snapshot (current + 24 h + yesterday outdoor + forecast) on every call. BigQuery and OpenWeather are queried once per question.
+2. The system prompt embeds the catalog (id + description for each intent) plus style rules.
+3. The user message contains the snapshot JSON plus the question.
+4. `response_format` forces a JSON schema with `intent: enum(...)` + `answer: string`. The model **cannot** return an invalid intent; OpenAI rejects the response server-side if it tries.
+5. The intent is surfaced in the `/speech/ask` response (`data.intent`) so the device, logs, and tests can verify routing.
+
+This is an *eager-snapshot* agent rather than a tool-calling one — the data is fetched up front and the LLM picks what's relevant from the JSON, instead of the LLM choosing which DB query to run. Trade-off: one round-trip and one BigQuery batch per question, at the cost of slightly higher prompt tokens. Functionally equivalent for this use case.
+
+**Test the routing:**
+```powershell
+# With the backend running locally
+python -m scripts.test_intents
+```
+Reads every example utterance from `intents.json`, sends it to `/speech/ask`, and prints a per-intent pass/fail summary plus the actual answers. Used to verify routing after prompt changes.
 
 ### Action 2 — Box Breathing
 
