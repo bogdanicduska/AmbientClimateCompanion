@@ -5,13 +5,8 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-VALID_EVENT_TYPES = {
-    "wifi_connected", "wifi_disconnected", "wifi_failed",
-    "room_online", "room_state_restored", "cache_loaded", "boot_recovered",
-    "room_synced", "room_sync_failed",
-    "humidity_alert", "air_quality_alert", "motion_triggered",
-    "announcement_spoken", "speech_query_received", "speech_summary_spoken",
-}
+# Canonical list lives in app.utils.validators.VALID_EVENT_TYPES.
+# Add new event types there; validation is enforced by validate_event_payload.
 
 
 def store_device_event(payload: Dict[str, Any], config) -> Dict[str, Any]:

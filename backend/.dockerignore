@@ -1,6 +1,29 @@
-.venv
-__pycache__
-.pytest_cache
+# ── Secrets — never copy into the image ────────────────────
 .env
+.env.*
+!.env.example
 service-account.json
-tests
+service_account.json
+*-credentials.json
+*.pem
+*.key.json
+
+# ── Python artifacts ────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# ── Virtual environments ────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Test / dev files ────────────────────────────────────────
+tests/
+scripts/
+*.log
+forced.wav

@@ -1,16 +1,22 @@
 import os
 import requests
 
+# Override at runtime via environment variables:
+#   BACKEND_URL  — full API base URL (no trailing slash), e.g. https://your-backend/api/v1
+#   DEVICE_ID    — default device shown in the sidebar selector
+#   KNOWN_DEVICES — comma-separated list of device IDs available in the sidebar
 BACKEND_URL = os.environ.get(
     "BACKEND_URL",
     "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1",
 )
 DEFAULT_DEVICE_ID = os.environ.get("DEVICE_ID", "m5stack-duska-home")
 
-KNOWN_DEVICES = [
-    "m5stack-duska-home",
-    "m5stack-ana-home",
-]
+_devices_env = os.environ.get("KNOWN_DEVICES", "")
+KNOWN_DEVICES = (
+    [d.strip() for d in _devices_env.split(",") if d.strip()]
+    if _devices_env
+    else ["m5stack-duska-home", "m5stack-ana-home"]
+)
 
 
 def fetch_latest(device_id: str = DEFAULT_DEVICE_ID) -> dict | None:

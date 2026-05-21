@@ -1,5 +1,5 @@
-import time
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 from services.api_client import DEFAULT_DEVICE_ID, KNOWN_DEVICES
 
 # ---------------------------------------------------------------------------
@@ -74,6 +74,8 @@ with st.sidebar:
     auto_refresh = st.toggle("Auto-refresh (60 s)", value=True)
     if st.button("↺  Refresh now", use_container_width=True):
         st.rerun()
+    if auto_refresh:
+        st_autorefresh(interval=60_000, key="auto_refresh_ticker")
 
     st.divider()
     st.select_slider(
@@ -92,9 +94,3 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 pg.run()
 
-# ---------------------------------------------------------------------------
-# Auto-refresh
-# ---------------------------------------------------------------------------
-if auto_refresh:
-    time.sleep(60)
-    st.rerun()

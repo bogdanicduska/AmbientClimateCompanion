@@ -57,8 +57,6 @@ The room's current human-readable identity — a short label that summarises how
 
 ---
 
----
-
 ## What has been built
 
 ### Device — M5Stack sensor (`device/`)
@@ -184,7 +182,134 @@ Metadata: `ingested_at`, `sync_status`
 - Manual scripts: `scripts/send_fake_telemetry.py`, `scripts/test_history.py`, `scripts/test_latest.py`, `scripts/test_payloads.py`
 
 ### Dashboard (`dashboard/`)
-Folder structure in place (`pages/`, `components/`, `assets/`) — frontend not yet implemented.
+Streamlit multi-page web app that turns BigQuery + backend data into a human-readable room analysis. Five pages:
+
+| Page | Purpose |
+|------|---------|
+| **Home** 🏠 | Daily check-in — current scores, story card, event timeline, outdoor context |
+| **Coach** 💡 | Ritual recommendation — one suggested action, reason, and outdoor suitability |
+| **Rhythm** 📈 | 24-hour trend charts for temperature, humidity, eCO2, scores |
+| **Memory** 🕐 | Historical score cards and aggregated room performance patterns |
+| **Device** 📡 | Live sensor snapshot, raw values, data-freshness indicator |
+
+**Architecture**
+
+```
+Browser ←──► Streamlit app (dashboard/)
+                  │
+                  ├── /api/v1/latest      ← current scores + sensors
+                  ├── /api/v1/history     ← 24-h or custom window
+                  ├── /api/v1/events      ← device event log
+                  └── /api/v1/forecast    ← 3-day weather summary
+              (Flask backend — local or Cloud Run)
+```
+
+The dashboard never queries BigQuery directly — all data comes through the backend REST API. Backend-computed scores (`readiness_score`, `recovery_score`, `air_strain_score`, `room_state`) are preferred; local fallback formulas in `dashboard/services/transformers.py` exist only for when the backend returns raw sensor data without enrichment.
+
+**Running locally**
+
+```powershell
+# 1. Set env vars (copy dashboard/.env.example → dashboard/.env and fill in values)
+$env:BACKEND_URL  = "http://localhost:5000/api/v1"   # or Cloud Run URL
+$env:DEVICE_ID    = "m5stack-duska-home"
+
+# 2. Install deps
+cd dashboard
+pip install -r requirements.txt
+
+# 3. Start
+streamlit run app.py
+```
+
+**Config env vars**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKEND_URL` | `http://localhost:5000/api/v1` | Backend base URL |
+| `DEVICE_ID` | `m5stack-duska-home` | Default device shown on load |
+| `KNOWN_DEVICES` | _(unset)_ | Comma-separated list for the device selector dropdown |
+
+**Docker / Cloud Run deployment**
+
+```powershell
+# Build
+docker build -t ambient-dashboard ./dashboard
+
+# Run locally
+docker run -p 8080:8080 `
+  -e BACKEND_URL=https://your-backend.run.app/api/v1 `
+  -e DEVICE_ID=m5stack-duska-home `
+  ambient-dashboard
+
+# Push + deploy (Cloud Run)
+docker tag ambient-dashboard gcr.io/cloud-lab-weather/ambient-dashboard
+docker push gcr.io/cloud-lab-weather/ambient-dashboard
+gcloud run deploy ambient-dashboard `
+  --image gcr.io/cloud-lab-weather/ambient-dashboard `
+  --platform managed --region europe-west6 --allow-unauthenticated
+```
+
+---
+
+## BigQuery setup
+
+The backend streams all sensor + weather records to BigQuery. Two tables are required:
+
+```
+cloud-lab-weather.ambient_climate.weather_records   ← telemetry (all sensor data)
+cloud-lab-weather.ambient_climate.device_events     ← device event log
+```
+
+**Create the tables from SQL**
+
+```bash
+bq query --use_legacy_sql=false < sql/create_room_telemetry.sql
+bq query --use_legacy_sql=false < sql/create_device_events.sql
+```
+
+Both files contain the full `CREATE TABLE IF NOT EXISTS` statement with partitioning by `DATE(timestamp)` and clustering by `device_id`. See `sql/` for the canonical schema — if you add a column, update the SQL file and `backend/app/services/bigquery_service.py` together.
+
+---
+
+## Local backend development
+
+```powershell
+# 1. Copy and fill in backend/.env.example → backend/.env
+# 2. Set GCP credentials (for BigQuery access)
+$env:GOOGLE_APPLICATION_CREDENTIALS = "path\to\your-service-account.json"
+
+# 3. Install deps
+cd backend
+pip install -r requirements.txt
+
+# 4. Run Flask dev server
+flask --app "app:create_app()" run --port 5000
+```
+
+Alternatively, use Docker:
+
+```powershell
+docker build -t ambient-backend ./backend
+docker run -p 5000:8080 `
+  --env-file backend/.env `
+  -e GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json `
+  -v "$PWD/your-sa.json:/app/sa.json:ro" `
+  ambient-backend
+```
+
+---
+
+## Score formulas
+
+All three scoring systems (device, backend, dashboard fallback) use the same continuous linear formulas. The canonical implementation lives in `backend/app/services/room_metrics_service.py`.
+
+| Score | Formula (simplified) |
+|-------|----------------------|
+| **Readiness** | `temp_score×0.40 + hum_score×0.25 + air_score×0.35` — where temp ideal=21 °C, hum ideal=50 % |
+| **Recovery** | `temp_score×0.35 + hum_score×0.30 + air_score×0.35` — where temp ideal=20 °C, hum ideal=52 % |
+| **Air Strain** | `tvoc_factor×0.50 + co2_factor×0.35 + heat_factor×0.15` — `tvoc_factor = min(100, tvoc/2)` |
+
+Room state is assigned from these scores in cascade order: Dry → Heavy → Social → Fresh → Sleep-Friendly → Calm → Restless → Calm.
 
 ---
 
@@ -452,11 +577,13 @@ A 120 s `WDT` is armed at boot and fed every main-loop iteration plus inside spe
 
 | Layer | Technology |
 |-------|-----------|
-| Device | M5Stack (UIFlow / MicroPython) |
-| Backend | Python 3.11, Flask, Pydantic |
+| Device | M5Stack Core2 (UIFlow 1 / MicroPython) |
+| Backend | Python 3.11, Flask, Gunicorn |
+| Dashboard | Python 3.11, Streamlit 1.55, Plotly |
 | Database | Google BigQuery |
 | Outdoor weather | OpenWeatherMap API |
-| Container | Docker, Gunicorn |
+| Voice AI | OpenAI Whisper (STT), OpenAI TTS, GPT-4o-mini (agent) |
+| Container | Docker |
 | Hosting | Google Cloud Run |
 
 ---
@@ -465,4 +592,5 @@ A 120 s `WDT` is armed at boot and fed every main-loop iteration plus inside spe
 
 | Tag | State |
 |-----|-------|
-| `v2` | Stable — Flask backend fully functional with BigQuery and OpenWeatherMap integration |
+| `v2` | Flask backend with BigQuery and OpenWeatherMap integration |
+| `v3` (main) | Multi-page Streamlit dashboard, proactive speech, voice agent, meditation, formula-aligned device |

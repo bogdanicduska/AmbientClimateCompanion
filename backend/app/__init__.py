@@ -18,11 +18,30 @@ from app.routes.daily_summary import daily_summary_bp
 from app.utils.logger import configure_logging
 
 
+def _validate_config(cfg) -> None:
+    """Fail fast at startup if critical config is missing."""
+    missing = []
+    if not cfg.get("OPENWEATHER_API_KEY"):
+        missing.append("OPENWEATHER_API_KEY")
+    if not cfg.get("DEVICE_AUTH_TOKEN") or cfg.get("DEVICE_AUTH_TOKEN") in ("changeme", "change_me_before_deploy"):
+        missing.append("DEVICE_AUTH_TOKEN (still set to placeholder)")
+    if not cfg.get("GCP_PROJECT_ID"):
+        missing.append("GCP_PROJECT_ID")
+    if missing:
+        import warnings
+        warnings.warn(
+            f"Room Rhythm: missing or placeholder config values: {', '.join(missing)}. "
+            "Some features may fail at runtime.",
+            stacklevel=2,
+        )
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
     configure_logging(app)
+    _validate_config(app.config)
 
     app.register_blueprint(health_bp)
     app.register_blueprint(telemetry_bp, url_prefix="/api/v1")

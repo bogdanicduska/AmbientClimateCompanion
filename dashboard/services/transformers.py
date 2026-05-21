@@ -1,7 +1,14 @@
 """
 Data transformation: room metric computation, contract builders,
 and history DataFrame parsing.
-Mirrors backend/app/services/room_metrics_service.py formulas.
+
+IMPORTANT — SOURCE OF TRUTH
+The functions compute_air_strain / compute_recovery / compute_readiness /
+compute_room_state below are LOCAL FALLBACK formulas only.
+They are kept in sync with backend/app/services/room_metrics_service.py.
+The dashboard PREFERS backend-computed scores (readiness_score /
+recovery_score / air_strain_score) when the API returns them — see enrich().
+Fallback computation only fires when those fields are absent (e.g. legacy data).
 """
 
 from __future__ import annotations
@@ -49,11 +56,14 @@ def compute_readiness(temp, humidity, aq, eco2) -> int:
     return int(temp_s * 0.40 + hum_s * 0.25 + air_s * 0.35)
 
 
-def compute_room_state(readiness, recovery, strain, humidity) -> str:
+def compute_room_state(readiness, recovery, strain, humidity, motion: bool = False) -> str:
+    # Mirrors backend compute_room_state — keep in sync with room_metrics_service.py
     if humidity < 40:
         return "Dry"
     if strain >= 65:
         return "Heavy"
+    if motion:
+        return "Social"
     if strain < 25 and 40 <= humidity <= 70:
         return "Fresh"
     if recovery >= 70:
@@ -109,10 +119,11 @@ def enrich(row: dict) -> dict:
     aq       = row.get("air_quality")     or 0.0
     eco2     = row.get("indoor_eco2")     or 400.0
 
+    motion    = bool(row.get("motion", False))
     readiness = compute_readiness(temp, humidity, aq, eco2)
     recovery  = compute_recovery(temp, humidity, aq, eco2)
     strain    = compute_air_strain(temp, humidity, aq, eco2)
-    state     = compute_room_state(readiness, recovery, strain, humidity)
+    state     = compute_room_state(readiness, recovery, strain, humidity, motion)
 
     return {
         **row,

@@ -122,7 +122,8 @@ def render() -> None:
         raw_events = fetch_events(device_id=device_id, limit=30)
         events     = to_room_events(raw_events)
 
-    # Filter to device/system events only (not environmental alerts)
+    # Filter to device/system events only (not environmental alerts).
+    # Full event type list lives in backend/app/utils/validators.py VALID_EVENT_TYPES.
     device_event_types = {
         "wifi_connected", "wifi_disconnected", "wifi_failed",
         "room_online", "room_state_restored", "room_synced", "room_sync_failed",

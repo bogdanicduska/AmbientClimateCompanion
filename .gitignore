@@ -47,5 +47,22 @@ gcloud-key*.json
 secrets.toml
 .streamlit/secrets.toml
 
+# -------------------------------------------------------------------
+# Editor and OS artifacts
+# -------------------------------------------------------------------
+*.tmp
+*.tmp.*
+.DS_Store
+Thumbs.db
 
+# -------------------------------------------------------------------
+# Downloaded test data / binary blobs — not source code
+# -------------------------------------------------------------------
+backend/tests/downloaded-logs-*.json
+backend/forced.wav
+*.wav
 
+# -------------------------------------------------------------------
+# Streamlit local config (may contain secrets)
+# -------------------------------------------------------------------
+.streamlit/

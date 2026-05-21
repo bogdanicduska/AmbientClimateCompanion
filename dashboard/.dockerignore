@@ -1,0 +1,19 @@
+# ── Secrets ─────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python artifacts ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# ── Virtual environments ─────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Editor artifacts ─────────────────────────────────────────
+*.tmp.*
+.streamlit/secrets.toml

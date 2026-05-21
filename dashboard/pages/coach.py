@@ -10,7 +10,6 @@ from services.api_client import fetch_latest
 from services.transformers import to_latest_room_state
 from services.rituals import get_ritual, get_alternative_ritual
 from services.story_engine import outdoor_suitability
-from services.analysis import summary_sentence
 
 from components.section_header import section_label
 from components.ritual_card import ritual_card
