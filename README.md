@@ -352,6 +352,69 @@ python -m scripts.test_intents
 ```
 Reads every example utterance from `intents.json`, sends it to `/speech/ask`, and prints a per-intent pass/fail summary plus the actual answers. Used to verify routing after prompt changes.
 
+### Verifying the data is real (demo "show your work" path)
+
+When the agent answers a `weather_yesterday` question (or any historical one), the numbers come from a BigQuery query, not the LLM's training data. To prove it on stage:
+
+**1. Hit `/speech/ask` and inspect the snapshot the LLM saw** (Cloud Shell / bash):
+
+```bash
+BACKEND="https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1"
+
+curl -s -X POST "$BACKEND/speech/ask" \
+  -H "Authorization: Bearer weather2026" \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"m5stack-ana-home","question":"what was the weather yesterday"}' \
+  | jq '.data | {intent, answer, outdoor_yesterday: .data_snapshot.outdoor_yesterday}'
+```
+
+PowerShell variant:
+
+```powershell
+curl.exe -s -X POST "$env:BACKEND/api/v1/speech/ask" `
+  -H "Authorization: Bearer weather2026" `
+  -H "Content-Type: application/json" `
+  -d '{\"device_id\":\"m5stack-ana-home\",\"question\":\"what was the weather yesterday\"}' |
+  ConvertFrom-Json | Select-Object -ExpandProperty data |
+  Select-Object intent, answer, @{n="outdoor_yesterday"; e={$_.data_snapshot.outdoor_yesterday}}
+```
+
+The response includes the `outdoor_yesterday` block the LLM read from — `outdoor_temp_min/max`, `outdoor_hum_min/max`, `weather_mode`, `records`, `date_utc`. The `answer` field should restate those exact numbers.
+
+**2. Run the same aggregation directly against BigQuery and confirm the numbers match.** Mirrors what `_outdoor_yesterday()` (in `agent_service.py`) does — same window, same aggregations:
+
+```bash
+bq query --use_legacy_sql=false '
+SELECT
+  MIN(outdoor_temp)     AS outdoor_temp_min,
+  MAX(outdoor_temp)     AS outdoor_temp_max,
+  MIN(outdoor_humidity) AS outdoor_hum_min,
+  MAX(outdoor_humidity) AS outdoor_hum_max,
+  COUNT(*)              AS records
+FROM `cloud-lab-weather.ambient_climate.weather_records`
+WHERE device_id = "m5stack-ana-home"
+  AND timestamp >= TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY), INTERVAL 1 DAY)
+  AND timestamp <  TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)
+'
+```
+
+Modal weather string (top row matches `weather_mode` in the snapshot):
+
+```bash
+bq query --use_legacy_sql=false '
+SELECT outdoor_weather, COUNT(*) AS n
+FROM `cloud-lab-weather.ambient_climate.weather_records`
+WHERE device_id = "m5stack-ana-home"
+  AND timestamp >= TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY), INTERVAL 1 DAY)
+  AND timestamp <  TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)
+  AND outdoor_weather IS NOT NULL
+GROUP BY outdoor_weather
+ORDER BY n DESC
+'
+```
+
+Three-way agreement (BigQuery row ↔ snapshot block ↔ spoken answer) is the demo's "proven from data" moment. If `records` is small (< ~20 — e.g. the device was offline most of yesterday), call it out so the panel doesn't read the tight min/max as suspicious.
+
 ### Action 2 — Box Breathing
 
 4 cycles × `(INHALE 4 s, HOLD 4 s, EXHALE 4 s, HOLD 4 s)`. The orb is a single solid coral disc (no halo) that grows during inhale, holds at max, shrinks during exhale, holds at min. Smoothstep easing for a natural breath cadence (`progress * progress * (3 - 2 * progress)`).

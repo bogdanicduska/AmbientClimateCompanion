@@ -1,0 +1,2653 @@
+[
+  {
+    "insertId": "6a0ebb71000e08b4821159e0",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "468",
+      "status": 201,
+      "responseSize": "336",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.72.2",
+      "latency": "8.811627759s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:36.985038Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/a87f60058a293930931ddfb87e27931f",
+    "receiveTimestamp": "2026-05-21T07:59:45.926629139Z",
+    "spanId": "644a58418d7d03fb",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.",
+    "insertId": "6a0ebb6900002b804e07f6aa",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.011136Z",
+    "severity": "INFO",
+    "labels": {
+      "scaling_reason": "AUTOSCALING",
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-05-21T07:59:37.016878558Z"
+  },
+  {
+    "textPayload": "[2026-05-21 07:59:37 +0000] [1] [INFO] Starting gunicorn 25.3.0",
+    "insertId": "6a0ebb69000aac0c4e121e65",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.699404Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:37.703811614Z"
+  },
+  {
+    "textPayload": "[2026-05-21 07:59:37 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)",
+    "insertId": "6a0ebb69000ab0d4225fa692",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.700628Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:38.039435935Z"
+  },
+  {
+    "textPayload": "[2026-05-21 07:59:37 +0000] [1] [INFO] Using worker: gthread",
+    "insertId": "6a0ebb69000ab0fc01f3a6bd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.700668Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:38.039435935Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe succeeded after 1 attempt for container \"backend-1\" on port 8080.",
+    "insertId": "6a0ebb69000ac1531f5b3a57",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.704851Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-05-21T07:59:38.017417772Z"
+  },
+  {
+    "textPayload": "[2026-05-21 07:59:37 +0000] [2] [INFO] Booting worker with pid: 2",
+    "insertId": "6a0ebb69000adbc0d1f6090a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.711616Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:38.039435935Z"
+  },
+  {
+    "textPayload": "[2026-05-21 07:59:37 +0000] [1] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl",
+    "insertId": "6a0ebb69000cdb1af3fad76a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:37.842522Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:38.039435935Z"
+  },
+  {
+    "textPayload": "2026-05-21 07:59:45,914 | INFO | app.services.bigquery_service | Event inserted: wifi_connected — device: m5stack-ana-home",
+    "insertId": "6a0ebb71000dee23acd890c6",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:45.912931Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:46.031541177Z"
+  },
+  {
+    "textPayload": "2026-05-21 07:59:45,914 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=wifi_connected",
+    "insertId": "6a0ebb71000dee334d50409b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T07:59:45.912947Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T07:59:46.031541177Z"
+  },
+  {
+    "insertId": "6a0ebd7b000378cef1bc1c48",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "468",
+      "status": 201,
+      "responseSize": "336",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.260724488s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:26.960837Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/940c63a31b06e6c638e2f9b97742d61d",
+    "receiveTimestamp": "2026-05-21T08:08:27.231836249Z",
+    "spanId": "f3f9dcbd72fb7789",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:08:27,226 | INFO | app.services.bigquery_service | Event inserted: wifi_connected — device: m5stack-ana-home",
+    "insertId": "6a0ebd7b0003745070cea2f2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:27.226384Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:27.230762289Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:27,226 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=wifi_connected",
+    "insertId": "6a0ebd7b000374a543499cef",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:27.226469Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:27.566830567Z"
+  },
+  {
+    "insertId": "6a0ebd7e000d4b877cf44dc9",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "432",
+      "status": 201,
+      "responseSize": "315",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.096425914s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:30.773618Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/4d5e91ea74347a6d9da23c404a99f6c7",
+    "receiveTimestamp": "2026-05-21T08:08:30.896653362Z",
+    "spanId": "99262a15bfb7c684"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:30,870 | INFO | app.services.bigquery_service | Event inserted: room_online — device: m5stack-ana-home",
+    "insertId": "6a0ebd7e000d4847160b4fea",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:30.870471Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:30.895520728Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:30,870 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_online",
+    "insertId": "6a0ebd7e000d4856f0bc6735",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:30.870486Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:30.895520728Z"
+  },
+  {
+    "insertId": "6a0ebd83000937cd57b8c007",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/latest?device_id=m5stack-ana-home",
+      "requestSize": "310",
+      "status": 200,
+      "responseSize": "687",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.997560553s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:34.605390Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/b08231ad552c1dc9d48e952cb2b556bd",
+    "receiveTimestamp": "2026-05-21T08:08:35.891450123Z",
+    "spanId": "7446e8224c6486a2"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:34,608 | INFO | app.routes.latest | Latest reading requested for m5stack-ana-home",
+    "insertId": "6a0ebd82000947e1eae37b64",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:34.608225Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:34.892192038Z"
+  },
+  {
+    "insertId": "6a0ebd85000b7f44764158e8",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "440",
+      "status": 201,
+      "responseSize": "323",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.120453744s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:37.631516Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/90f78bd2fd8959c7c218faf83246e179",
+    "receiveTimestamp": "2026-05-21T08:08:37.887791616Z",
+    "spanId": "df575bc1996d9a33",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:08:37,752 | INFO | app.services.bigquery_service | Event inserted: room_state_restored — device: m5stack-ana-home",
+    "insertId": "6a0ebd85000b7bd5cd4f63b1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:37.752597Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:37.888338244Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:37,752 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_state_restored",
+    "insertId": "6a0ebd85000b7be287336634",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:37.752610Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:37.888338244Z"
+  },
+  {
+    "insertId": "6a0ebd8b000011541d00b696",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/telemetry",
+      "requestSize": "581",
+      "status": 201,
+      "responseSize": "606",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.349391670s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:42.653503Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/864779d04785e330f022098fe62e903c",
+    "receiveTimestamp": "2026-05-21T08:08:43.215341158Z",
+    "spanId": "61d3a6d5a05bbe5f"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:42,657 | INFO | app.routes.telemetry | Telemetry received for m5stack-ana-home",
+    "insertId": "6a0ebd8a000a04c36b298621",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:42.656579Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:42.884460123Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:42,699 | INFO | app.services.weather_service | Weather fetch successful — Lausanne: broken clouds, 16.86°C",
+    "insertId": "6a0ebd8a000aa92cab129944",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:42.698668Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:42.884460123Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:43,004 | INFO | app.services.bigquery_service | Record inserted: 2026-05-21 08:08:42 — device: m5stack-ana-home",
+    "insertId": "6a0ebd8b00000d671d5fb172",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:43.003431Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:43.217814731Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:43,004 | INFO | app.services.telemetry_service | Ingested — device=m5stack-ana-home, temp=25.7°C, humidity=49.8%",
+    "insertId": "6a0ebd8b00000d98ab02ae8a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:43.003480Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:43.217814731Z"
+  },
+  {
+    "insertId": "6a0ebd8c00093874334d275e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "433",
+      "status": 201,
+      "responseSize": "315",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.103314733s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:44.499669Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/85d93a20c8b9847671eefb1b548b7dbc",
+    "receiveTimestamp": "2026-05-21T08:08:44.882166618Z",
+    "spanId": "2a79795ff2215a64"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:44,603 | INFO | app.services.bigquery_service | Event inserted: room_synced — device: m5stack-ana-home",
+    "insertId": "6a0ebd8c000934ec3258a212",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:44.603372Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:44.883148057Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:44,603 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_synced",
+    "insertId": "6a0ebd8c000934fbacb68db0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:44.603387Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:44.883148057Z"
+  },
+  {
+    "insertId": "6a0ebd95000047b513cfef2d",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/proactive?device_id=m5stack-ana-home&raw=1",
+      "requestSize": "361",
+      "status": 200,
+      "responseSize": "206196",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "4.278510262s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:48.738375Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/2e274b96c7bc42a9983b8c4bc462666b",
+    "receiveTimestamp": "2026-05-21T08:08:53.208253007Z",
+    "spanId": "7e442f57c3377f77",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:08:49,664 | INFO | app.services.forecast_service | Forecast fetched — umbrella=False, storm=False",
+    "insertId": "6a0ebd91000a20f86dd80dd5",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:49.663800Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:49.874297121Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:50,624 | INFO | app.services.proactive_service | Proactive trigger fired: morning_briefing",
+    "insertId": "6a0ebd92000985f9f5f3ba04",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:50.624121Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:50.874094661Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:52,508 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebd940007bf7332c5f136",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:52.507763Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:52.540375021Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:52,915 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=16 duration~6315ms bytes=308886",
+    "insertId": "6a0ebd94000df263c9b4b817",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:52.914019Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:53.206413049Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:08:53,018 | INFO | app.services.bigquery_service | Event inserted: speech_summary_spoken — device: m5stack-ana-home",
+    "insertId": "6a0ebd95000042f1c008b90b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:08:53.017137Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:08:53.206413049Z"
+  },
+  {
+    "insertId": "6a0ebe170007caeada0aeb0f",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/stt",
+      "requestSize": "216229",
+      "status": 200,
+      "responseSize": "211",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "1.051945731s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:02.452420Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/be7a1d3a2e1595e9a05feccf2b8e32e4",
+    "receiveTimestamp": "2026-05-21T08:11:03.515484936Z",
+    "spanId": "825bda52c55d98d7",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:11:02,462 | INFO | app.routes.speech_stt | STT — device=m5stack-ana-home format=wav",
+    "insertId": "6a0ebe1600070d5f0070f507",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:02.462175Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:02.467117872Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:03,507 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/transcriptions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe170007bce3ca75713d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:03.507107Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:03.798179065Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:03,510 | INFO | app.services.stt_service | STT transcript=\"What's the weather right now?\" confidence=0.706",
+    "insertId": "6a0ebe170007c7775371e78d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:03.509815Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:03.798179065Z"
+  },
+  {
+    "insertId": "6a0ebe20000acf83a89f98dc",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/ask",
+      "requestSize": "453",
+      "status": 200,
+      "responseSize": "1195",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "7.023071612s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:05.684075Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/c9d321942c53cb888d4b074c63608e0b",
+    "receiveTimestamp": "2026-05-21T08:11:12.839104161Z",
+    "spanId": "7f860faca2f3af08"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:05,687 | INFO | app.routes.speech_ask | ASK — device=m5stack-ana-home question=\"What's the weather right now?\"",
+    "insertId": "6a0ebe19000a7b4b9c52b0a3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:05.686923Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:05.796610748Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:08,741 | INFO | app.services.forecast_service | Forecast fetched — umbrella=False, storm=False",
+    "insertId": "6a0ebe1c000b4fb36bb8edb6",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:08.741299Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:08.795090817Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:11,253 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe1f0003db023a4b3dfc",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:11.252674Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:11.458807717Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:11,259 | INFO | app.services.agent_service | agent: ok intent=weather_now in 2516ms tokens prompt=885 completion=27 cached=0",
+    "insertId": "6a0ebe1f0003f03a70fd7e74",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:11.258106Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:11.458807717Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:12,392 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe200005fb7f49f45831",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:12.392063Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:12.457469993Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:12,704 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=12 duration~4736ms bytes=258992",
+    "insertId": "6a0ebe20000abff6b82214b9",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:12.704502Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:12.792083663Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:12,708 | INFO | app.routes.speech_ask | ASK queued audio for device=m5stack-ana-home intent=weather_now bytes=172676",
+    "insertId": "6a0ebe20000acc3f1f364a35",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:12.707647Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:12.792083663Z"
+  },
+  {
+    "insertId": "6a0ebe260009dd42a59cc856",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/tts?raw=1&profile=m5stack",
+      "requestSize": "530",
+      "status": 200,
+      "responseSize": "177148",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "2.371324701s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:16.273532Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/e8d8eedb522c17055ef22bcd3174d0d6",
+    "receiveTimestamp": "2026-05-21T08:11:18.833218844Z",
+    "spanId": "f24ac7dd9003233e",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:11:16,277 | INFO | app.routes.speech_tts | TTS — device=m5stack-ana-home fmt=wav raw=True profile=m5stack text='The outdoor temperature is 16.9 C with broken clouds and 70% humidity.'",
+    "insertId": "6a0ebe240004394caee81202",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:16.276812Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:16.453607435Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:18,127 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe260001f0baad33890d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:18.127162Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:18.450710599Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:18,643 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=12 duration~4736ms bytes=265308",
+    "insertId": "6a0ebe260009ce8cfaa4c10f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:18.642700Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:18.788470795Z"
+  },
+  {
+    "insertId": "6a0ebe4d000aec83306fa2de",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/stt",
+      "requestSize": "216229",
+      "status": 200,
+      "responseSize": "229",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "0.979486985s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:56.730523Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/10ac11a4e10a8e0a6948dd3f78be7f2a",
+    "receiveTimestamp": "2026-05-21T08:11:57.720613867Z",
+    "spanId": "ab9ccd4321429aa1",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:11:56,740 | INFO | app.routes.speech_stt | STT — device=m5stack-ana-home format=wav",
+    "insertId": "6a0ebe4c000b4960708a31b2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:56.739680Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:56.746880064Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:57,715 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/transcriptions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe4d000ae617fe0a5f25",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:57.714263Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:57.745076736Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:57,715 | INFO | app.services.stt_service | STT transcript='¿Cuál es la temperatura ahora mismo?' confidence=0.695",
+    "insertId": "6a0ebe4d000ae9249d85f505",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:57.715044Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:11:57.745076736Z"
+  },
+  {
+    "insertId": "6a0ebe56000122bd286bd880",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/ask",
+      "requestSize": "461",
+      "status": 200,
+      "responseSize": "1157",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "6.282854007s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:59.790233Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/95505251d96d10389e284ccdab321602",
+    "receiveTimestamp": "2026-05-21T08:12:06.379929924Z",
+    "spanId": "34017b49da437c1f"
+  },
+  {
+    "textPayload": "2026-05-21 08:11:59,793 | INFO | app.routes.speech_ask | ASK — device=m5stack-ana-home question='¿Cuál es la temperatura ahora mismo?'",
+    "insertId": "6a0ebe4f000c197a88ae2497",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:11:59.792954Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:00.075445563Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:02,635 | INFO | app.services.forecast_service | Forecast fetched — umbrella=False, storm=False",
+    "insertId": "6a0ebe520009af28586cc36a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:02.634664Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:02.739103353Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:04,537 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe5400082f52abbd7b27",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:04.536402Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:04.741324790Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:04,541 | INFO | app.services.agent_service | agent: ok intent=room_now in 1904ms tokens prompt=887 completion=20 cached=0",
+    "insertId": "6a0ebe5400083f83eb1fc411",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:04.540547Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:04.741324790Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:05,696 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe55000a9be5742e4310",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:05.695269Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:05.737032378Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:06,073 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=7 duration~2763ms bytes=137096",
+    "insertId": "6a0ebe5600011a00321b5b77",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:06.072192Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:06.399907317Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:06,074 | INFO | app.routes.speech_ask | ASK queued audio for device=m5stack-ana-home intent=room_now bytes=91412",
+    "insertId": "6a0ebe5600011ed45ab766b7",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:06.073428Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:06.399907317Z"
+  },
+  {
+    "insertId": "6a0ebe5a000d2f474e18aae0",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/tts?raw=1&profile=m5stack",
+      "requestSize": "494",
+      "status": 200,
+      "responseSize": "78586",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.76.2",
+      "latency": "1.515335559s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:09.347208Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/3afb9b736d8725e0e0aa9e8e8ced2ab7",
+    "receiveTimestamp": "2026-05-21T08:12:11.040365089Z",
+    "spanId": "e816af4f4ab32c17",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:12:09,351 | INFO | app.routes.speech_tts | TTS — device=m5stack-ana-home fmt=wav raw=True profile=m5stack text='La temperatura actual es de 25.7 C.'",
+    "insertId": "6a0ebe590005588f5866066b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:09.350351Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:09.397858702Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:10,334 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ebe5a00051a668454f38c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:10.334438Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:10.401333120Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:12:10,862 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=7 duration~2763ms bytes=117518",
+    "insertId": "6a0ebe5a000d270b64c73e45",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:12:10.861963Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:12:11.065093793Z"
+  },
+  {
+    "insertId": "6a0ebee000094d3874584d37",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/meditation?session=calm",
+      "requestSize": "374",
+      "status": 200,
+      "responseSize": "708",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.78.2",
+      "latency": "0.002195679s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:14:24.601697Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/c391c8350cb07e5fac6c7e05de97ed94",
+    "receiveTimestamp": "2026-05-21T08:14:24.617871213Z",
+    "spanId": "3a11a32b5be62721",
+    "traceSampled": true
+  },
+  {
+    "insertId": "6a0ebf03000133c783cf5a90",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/proactive?device_id=m5stack-ana-home&raw=1",
+      "requestSize": "360",
+      "status": 200,
+      "responseSize": "172908",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.78.2",
+      "latency": "0.002379702s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:14:59.074720Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/8f75a0bd5bea322e5d48caad5eb49ae9",
+    "receiveTimestamp": "2026-05-21T08:14:59.082338429Z",
+    "spanId": "5b8391e703745d26",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:14:59,078 | INFO | app.routes.speech_proactive | Proactive draining ASK answer for device=m5stack-ana-home trigger=ask_weather_now",
+    "insertId": "6a0ebf0300013075e87ccccd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:14:59.077941Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:14:59.085951427Z"
+  },
+  {
+    "insertId": "6a0ebf11000a7c29f705b8b6",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/telemetry",
+      "requestSize": "581",
+      "status": 201,
+      "responseSize": "606",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.78.2",
+      "latency": "0.265421489s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:13.420419Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/ae5f967c486d34c26c54c48649e9c0d0",
+    "receiveTimestamp": "2026-05-21T08:15:13.740230409Z",
+    "spanId": "02b33c6ea539b224",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:15:13,424 | INFO | app.routes.telemetry | Telemetry received for m5stack-ana-home",
+    "insertId": "6a0ebf11000677c3851becf4",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:13.423875Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:13.741490771Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:15:13,459 | INFO | app.services.weather_service | Weather fetch successful — Lausanne: broken clouds, 16.86°C",
+    "insertId": "6a0ebf110007006c757cb2ff",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:13.458860Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:13.741490771Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:15:13,686 | INFO | app.services.bigquery_service | Record inserted: 2026-05-21 08:15:13 — device: m5stack-ana-home",
+    "insertId": "6a0ebf11000a78d5c4d1aa3a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:13.686293Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:13.741490771Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:15:13,686 | INFO | app.services.telemetry_service | Ingested — device=m5stack-ana-home, temp=25.6°C, humidity=46.9%",
+    "insertId": "6a0ebf11000a78e64e4b4ac3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:13.686310Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:13.741490771Z"
+  },
+  {
+    "insertId": "6a0ebf13000475a84d0f8218",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "432",
+      "status": 201,
+      "responseSize": "315",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.78.2",
+      "latency": "0.132094740s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:15.158654Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/5bd361d3a0444aa2943b8a2f5a504c41",
+    "receiveTimestamp": "2026-05-21T08:15:15.402094612Z",
+    "spanId": "e431b8d72c4054a5"
+  },
+  {
+    "textPayload": "2026-05-21 08:15:15,292 | INFO | app.services.bigquery_service | Event inserted: room_synced — device: m5stack-ana-home",
+    "insertId": "6a0ebf13000471e090367f35",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:15.291296Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:15.406801078Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:15:15,292 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_synced",
+    "insertId": "6a0ebf13000472127a40c071",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:15:15.291346Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:15:15.406801078Z"
+  },
+  {
+    "insertId": "6a0ec02f0007ff6c005633c8",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/proactive?device_id=m5stack-ana-home&raw=1",
+      "requestSize": "360",
+      "status": 200,
+      "responseSize": "91605",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "0.002268979s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:19:59.516722Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/851fce432cbc50fa32d16a1d1198b7e4",
+    "receiveTimestamp": "2026-05-21T08:19:59.528541367Z",
+    "spanId": "c361e6db2cde994b",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:19:59,524 | INFO | app.routes.speech_proactive | Proactive draining ASK answer for device=m5stack-ana-home trigger=ask_room_now",
+    "insertId": "6a0ec02f0007fc8de771c167",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:19:59.523405Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:19:59.530532550Z"
+  },
+  {
+    "insertId": "6a0ec03d0002120e10170f6a",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/telemetry",
+      "requestSize": "581",
+      "status": 201,
+      "responseSize": "606",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "0.171919360s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:12.962241Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/e2360d771ef49dce930818f633adaa2b",
+    "receiveTimestamp": "2026-05-21T08:20:13.141982033Z",
+    "spanId": "3ce2caa592ad7c1f",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:20:12,969 | INFO | app.routes.telemetry | Telemetry received for m5stack-ana-home",
+    "insertId": "6a0ec03c000ec6629578dc5e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:12.968290Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:12.972616718Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:13,005 | INFO | app.services.weather_service | Weather fetch successful — Lausanne: broken clouds, 16.86°C",
+    "insertId": "6a0ec03d0000116fb325c104",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:13.004463Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:13.307052692Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:13,135 | INFO | app.services.bigquery_service | Record inserted: 2026-05-21 08:20:13 — device: m5stack-ana-home",
+    "insertId": "6a0ec03d00020e21aabc8be5",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:13.134689Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:13.307052692Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:13,135 | INFO | app.services.telemetry_service | Ingested — device=m5stack-ana-home, temp=25.3°C, humidity=45.2%",
+    "insertId": "6a0ec03d00020e3465bb192f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:13.134708Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:13.307052692Z"
+  },
+  {
+    "insertId": "6a0ec03e000b567f6fc4b0ba",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "433",
+      "status": 201,
+      "responseSize": "315",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "0.142062517s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:14.599427Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/6bafae3807351d11831f4c5d9c94f091",
+    "receiveTimestamp": "2026-05-21T08:20:14.808222801Z",
+    "spanId": "21e254a384dbc7c5"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:14,743 | INFO | app.services.bigquery_service | Event inserted: room_synced — device: m5stack-ana-home",
+    "insertId": "6a0ec03e000b53081325a7d2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:14.742152Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:14.972562733Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:14,743 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_synced",
+    "insertId": "6a0ec03e000b5322f71b0e3d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:14.742178Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:14.972562733Z"
+  },
+  {
+    "insertId": "6a0ec05300030a48e1bf9f1e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/stt",
+      "requestSize": "216230",
+      "status": 200,
+      "responseSize": "210",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "0.890900682s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:34.306648Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/0414c22e708dd79d8f0a9684d35c93a2",
+    "receiveTimestamp": "2026-05-21T08:20:35.204893658Z",
+    "spanId": "46575d1b6cb2d9a9",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:20:34,312 | INFO | app.routes.speech_stt | STT — device=m5stack-ana-home format=wav",
+    "insertId": "6a0ec0520004c23373cf51bc",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:34.311859Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:34.317781304Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:35,198 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/transcriptions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ec05300030452e3a4c409",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:35.197714Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:35.316616815Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:35,199 | INFO | app.services.stt_service | STT transcript='What is the meaning of life?' confidence=0.672",
+    "insertId": "6a0ec053000307077136cbab",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:35.198407Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:35.316616815Z"
+  },
+  {
+    "insertId": "6a0ec05c0008fce3188267d2",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/ask",
+      "requestSize": "451",
+      "status": 200,
+      "responseSize": "1223",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "7.311602963s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:37.276Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/2b28e920add7d9bd0a33ecd0eca65552",
+    "receiveTimestamp": "2026-05-21T08:20:44.860771127Z",
+    "spanId": "3e2f2aea3fb64bb8"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:37,279 | INFO | app.routes.speech_ask | ASK — device=m5stack-ana-home question='What is the meaning of life?'",
+    "insertId": "6a0ec055000440c7e77d9569",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:37.278727Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:37.314481379Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:40,470 | INFO | app.services.forecast_service | Forecast fetched — umbrella=False, storm=False",
+    "insertId": "6a0ec05800072869dcab4c25",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:40.469097Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:40.645449111Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:42,086 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ec05a000150020ce1ca56",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:42.086018Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:42.309007297Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:42,087 | INFO | app.services.agent_service | agent: ok intent=unknown in 1616ms tokens prompt=886 completion=9 cached=0",
+    "insertId": "6a0ec05a00015407f32e7f4e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:42.087047Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:42.309007297Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:44,072 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ec05c000116757901bd1c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:44.071285Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:44.308754099Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:44,586 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=17 duration~6710ms bytes=284254",
+    "insertId": "6a0ec05c0008ee9d4ffc09b6",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:44.585373Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:44.640248810Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:44,589 | INFO | app.routes.speech_ask | ASK queued audio for device=m5stack-ana-home intent=unknown bytes=189518",
+    "insertId": "6a0ec05c0008f937225d4d8f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:44.588087Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:44.640248810Z"
+  },
+  {
+    "insertId": "6a0ec065000196875c866151",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/tts?raw=1&profile=m5stack",
+      "requestSize": "557",
+      "status": 200,
+      "responseSize": "192757",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.74.2",
+      "latency": "4.710577175s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:48.392062Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/63b9a87291a40f6de40bf4d3331f21ae",
+    "receiveTimestamp": "2026-05-21T08:20:53.188869371Z",
+    "spanId": "70b2358fe44774ec",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:20:48,398 | INFO | app.routes.speech_tts | TTS — device=m5stack-ana-home fmt=wav raw=True profile=m5stack text='I am not sure how to answer that. Try asking about temperature, humidity, air quality, or recovery.'",
+    "insertId": "6a0ec060000614765b83ed56",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:48.398454Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:48.635975135Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:52,182 | INFO | httpx | HTTP Request: POST https://api.openai.com/v1/audio/speech \"HTTP/1.1 200 OK\"",
+    "insertId": "6a0ec0640002c52952693374",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:52.181545Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:52.298163201Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:20:53,100 | INFO | app.services.tts_service | TTS synthesized — fmt=wav words=17 duration~6710ms bytes=288676",
+    "insertId": "6a0ec0650001859a60dd0125",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend",
+        "service_name": "ambient-climate-backend",
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6"
+      }
+    },
+    "timestamp": "2026-05-21T08:20:53.099738Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:20:53.298121121Z"
+  },
+  {
+    "insertId": "6a0ec15b000c62e25c88b480",
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/speech/proactive?device_id=m5stack-ana-home&raw=1",
+      "requestSize": "361",
+      "status": 200,
+      "responseSize": "189775",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.79.2",
+      "latency": "0.002497832s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "configuration_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:24:59.804007Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/f4192b564acd136601b6623002329eb5",
+    "receiveTimestamp": "2026-05-21T08:24:59.817243468Z",
+    "spanId": "5817b7454dd4731e",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:24:59,811 | INFO | app.routes.speech_proactive | Proactive draining ASK answer for device=m5stack-ana-home trigger=ask_unknown",
+    "insertId": "6a0ec15b000c5ee061b7bf2c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:24:59.810720Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:24:59.816256573Z"
+  },
+  {
+    "insertId": "6a0ec16a000466a67d055cae",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/telemetry",
+      "requestSize": "585",
+      "status": 201,
+      "responseSize": "609",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.79.2",
+      "latency": "0.257760037s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:14.029360Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/8ecaa8d9c62d7baf1b49c551f1e7336c",
+    "receiveTimestamp": "2026-05-21T08:25:14.470889803Z",
+    "spanId": "317e28033e4b893e",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "2026-05-21 08:25:14,033 | INFO | app.routes.telemetry | Telemetry received for m5stack-ana-home",
+    "insertId": "6a0ec16a00007e93133dda94",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:14.032403Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:14.135648741Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:25:14,069 | INFO | app.services.weather_service | Weather fetch successful — Lausanne: broken clouds, 16.86°C",
+    "insertId": "6a0ec16a0001099bca19cb88",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:14.067995Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:14.135648741Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:25:14,288 | INFO | app.services.bigquery_service | Record inserted: 2026-05-21 08:25:14 — device: m5stack-ana-home",
+    "insertId": "6a0ec16a00046303711033c2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:14.287491Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:14.466701754Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:25:14,288 | INFO | app.services.telemetry_service | Ingested — device=m5stack-ana-home, temp=25.0°C, humidity=45.2%",
+    "insertId": "6a0ec16a00046313947017d7",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:14.287507Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:14.466701754Z"
+  },
+  {
+    "insertId": "6a0ec16b000ded2d32c380fb",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/events",
+      "requestSize": "432",
+      "status": 201,
+      "responseSize": "315",
+      "remoteIp": "31.10.172.79",
+      "serverIp": "34.143.79.2",
+      "latency": "0.105701422s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "cloud-lab-weather",
+        "location": "europe-west6",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "service_name": "ambient-climate-backend"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:15.805625Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/cloud-lab-weather/traces/534f1a036fd42de10157441d0b64982f",
+    "receiveTimestamp": "2026-05-21T08:25:16.133182512Z",
+    "spanId": "7209c1b7e3880d44"
+  },
+  {
+    "textPayload": "2026-05-21 08:25:15,913 | INFO | app.services.bigquery_service | Event inserted: room_synced — device: m5stack-ana-home",
+    "insertId": "6a0ec16b000dea47a870322c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26",
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:15.911943Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:16.134491403Z"
+  },
+  {
+    "textPayload": "2026-05-21 08:25:15,913 | INFO | app.routes.events | Event stored — device=m5stack-ana-home, type=room_synced",
+    "insertId": "6a0ec16b000dea5b5a95a688",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "europe-west6",
+        "project_id": "cloud-lab-weather",
+        "service_name": "ambient-climate-backend",
+        "configuration_name": "ambient-climate-backend",
+        "revision_name": "ambient-climate-backend-00027-k26"
+      }
+    },
+    "timestamp": "2026-05-21T08:25:15.911963Z",
+    "labels": {
+      "instanceId": "0007b734d9502bff41520f34ec63e5d0d62cb6b42f5dc907f5bfb6d2a3603caaac5ebd3e9f24add0968d9a1d2ee1f84eaa82581309b16796e0a0221f88444bac9d7f5360c08d40771b654a65e7"
+    },
+    "logName": "projects/cloud-lab-weather/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-05-21T08:25:16.134491403Z"
+  }
+]

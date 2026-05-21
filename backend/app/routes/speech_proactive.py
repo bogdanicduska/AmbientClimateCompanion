@@ -1,9 +1,6 @@
-import base64
-
 from flask import Blueprint, Response, jsonify, request, current_app
 
 from app.services.events_service import store_device_event
-from app.services.pending_audio_service import dequeue as dequeue_audio
 from app.services.proactive_service import evaluate_proactive
 from app.services.tts_service import synthesize_speech, convert_wav_for_m5stack
 from app.utils.logger import get_logger
@@ -29,17 +26,17 @@ def _raw_response(audio_bytes: bytes, *, source: str, trigger_id: str, text: str
 
 @speech_proactive_bp.get("/speech/proactive")
 def proactive():
-    """Return one pending audio item for the device.
+    """Evaluate proactive triggers and, if one fires, return its spoken audio.
 
-    Order of precedence:
-      1. Pending ASK answers (queued by /speech/ask).
-      2. Proactive triggers (weather/umbrella/etc) — same logic as before, with cooldowns.
+    ASK answers are NOT delivered here — the device plays those inline from the
+    /speech/ask response. This endpoint carries only unprompted announcements
+    (weather/umbrella/morning briefing/etc), gated by per-trigger cooldowns.
 
     Modes:
       ?raw=1     → binary WAV body, metadata in X-* headers, 204 if nothing.
       (default)  → JSON body with audio_b64 (legacy clients).
       ?dry_run=1 → evaluate triggers but don't synthesize/log cooldown.
-      ?force=ID  → bypass condition + cooldown (skips the queue too).
+      ?force=ID  → bypass condition + cooldown.
     """
     device_id = request.args.get("device_id")
     if not device_id:
@@ -49,30 +46,7 @@ def proactive():
     dry_run = request.args.get("dry_run", "0") in ("1", "true", "yes")
     force   = request.args.get("force")
 
-    # 1. Pending ASK answer queue — direct user questions take priority over
-    #    proactive triggers. Skipped on force/dry_run so demos still work.
-    if not force and not dry_run:
-        pending = dequeue_audio(device_id)
-        if pending:
-            logger.info(f"Proactive draining ASK answer for device={device_id} trigger={pending.get('trigger_id')}")
-            audio_bytes = pending.get("audio_bytes") or b""
-            text        = pending.get("text") or ""
-            trigger_id  = pending.get("trigger_id") or "ask_unknown"
-            source      = pending.get("source") or "ask"
-            if raw:
-                return _raw_response(audio_bytes, source=source, trigger_id=trigger_id, text=text)
-            return jsonify({
-                "success": True,
-                "data": {
-                    "announce":   True,
-                    "source":     source,
-                    "trigger_id": trigger_id,
-                    "text":       text,
-                    "audio_b64":  base64.b64encode(audio_bytes).decode("utf-8"),
-                },
-            }), 200
-
-    # 2. Proactive trigger evaluation
+    # Proactive trigger evaluation
     try:
         trigger = evaluate_proactive(device_id, current_app.config, force_trigger=force)
     except ValueError as exc:
