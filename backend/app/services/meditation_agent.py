@@ -33,52 +33,80 @@ logger = get_logger(__name__)
 
 _MODEL      = "gpt-4o-mini"
 _TIMEOUT_S  = 8.0
-_MAX_TOKENS = 600
+_MAX_TOKENS = 900   # technique-driven sessions run longer (9-11 cues)
 
-# Theme -> fixed metadata + the intent that shapes the generated script. The
-# device only requests "calm" today; the extra themes are ready for a future
-# device-side picker (no further backend work needed to expose them).
+# Theme -> fixed metadata + the TECHNIQUE that shapes the generated script.
+# Each theme teaches a real mindfulness technique (Headspace-style) instead of
+# generic "breathe in / breathe out". `cues` is the target number of spoken
+# lines; against duration_s it sets the pacing (more cues = less silence).
+# The device only requests the theme its picker selects; all are generatable.
 _THEMES: Dict[str, Dict[str, Any]] = {
     "calm": {
         "title": "Calm", "subtitle": "3 min - settle in",
-        "duration_s": 180, "breath_in_s": 6, "breath_out_s": 6,
-        "intent": "a gentle session to settle in, slow down, and release tension",
+        "duration_s": 180, "breath_in_s": 6, "breath_out_s": 6, "cues": 9,
+        "technique": "focused attention on the breath",
+        "guide": "Rest attention on the natural breath at the nose or belly. "
+                 "Follow a few breaths, and each time the mind wanders, gently "
+                 "guide it back to the breath. Calm, grounding, unhurried.",
     },
     "sleep": {
         "title": "Sleep", "subtitle": "4 min - wind down",
-        "duration_s": 240, "breath_in_s": 4, "breath_out_s": 8,
-        "intent": "a slow wind-down to prepare the body for sleep, emphasising long exhales",
+        "duration_s": 240, "breath_in_s": 4, "breath_out_s": 8, "cues": 9,
+        "technique": "body scan with a warm-light visualization",
+        "guide": "Slowly scan the body from head to toes, and with each long "
+                 "exhale picture a warm soft light, or a gentle heaviness, "
+                 "sinking down through the body and releasing each part. End "
+                 "drifting toward sleep, eyes staying closed.",
     },
     "focus": {
         "title": "Focus", "subtitle": "3 min - reset attention",
-        "duration_s": 180, "breath_in_s": 4, "breath_out_s": 4,
-        "intent": "a short reset to clear the mind and sharpen attention before focused work",
+        "duration_s": 180, "breath_in_s": 4, "breath_out_s": 4, "cues": 11,
+        "technique": "noting",
+        "guide": "Teach the noting technique: rest on the breath, and when a "
+                 "thought or feeling pulls attention away, gently note it - "
+                 "'thinking', 'planning', 'feeling' - then return to the breath. "
+                 "Builds a clear, sharp, present mind for work.",
     },
     "stress": {
         "title": "Stress Relief", "subtitle": "3 min - let go",
-        "duration_s": 180, "breath_in_s": 4, "breath_out_s": 6,
-        "intent": "release acute stress, unclench the body, and return to the present",
+        "duration_s": 180, "breath_in_s": 4, "breath_out_s": 6, "cues": 10,
+        "technique": "body scan to release tension",
+        "guide": "Move attention slowly through the body - jaw, shoulders, "
+                 "chest, hands, belly, legs - softening and releasing the "
+                 "tension in each area on the out-breath. Let go of the day.",
     },
     "energize": {
         "title": "Energize", "subtitle": "2 min - wake up",
-        "duration_s": 120, "breath_in_s": 5, "breath_out_s": 5,
-        "intent": "a brief energising session to feel alert, awake, and present",
+        "duration_s": 120, "breath_in_s": 5, "breath_out_s": 5, "cues": 9,
+        "technique": "energizing light visualization",
+        "guide": "Fuller, brighter breaths. With each inhale, picture light or "
+                 "warmth rising up through the body, leaving the listener alert, "
+                 "awake, and present. Gently uplifting, not rushed.",
     },
 }
 
 _DEFAULT_THEME = "calm"
 
 _SYSTEM_PROMPT = (
-    "You write short guided meditation scripts for an ambient room companion "
-    "that speaks each line aloud through a small speaker. Tone: calm, warm, "
-    "plain-spoken - like a good meditation teacher. Never new-age, flowery, or "
+    "You are a warm, experienced meditation teacher (in the spirit of Headspace) "
+    "writing a guided session for an ambient room companion that speaks each "
+    "line aloud through a small speaker. You are given ONE technique to teach "
+    "and how to guide it - the whole session should actually teach and guide "
+    "that technique, not just repeat 'breathe in, breathe out'.\n\n"
+    "Voice: calm, warm, plain-spoken, encouraging. Never flowery, new-age, or "
     "clinical.\n\n"
+    "Shape the session as an arc:\n"
+    "1. A brief, fresh settling-in line. Do NOT use the cliche 'find a "
+    "comfortable position' - vary it, or simply invite the listener to arrive "
+    "and soften.\n"
+    "2. The heart of the session: guide the given technique step by step, with "
+    "warm transitions between cues.\n"
+    "3. A gentle close that fits the theme (for sleep, drifting off with the "
+    "eyes staying closed; otherwise slowly returning and opening the eyes).\n\n"
     "Rules:\n"
-    "- Each prompt is ONE short spoken line, max about 12 words.\n"
-    "- The first prompt settles the listener in; the last gently brings them "
-    "back (e.g. open your eyes when ready).\n"
-    "- Space the prompts naturally across the whole session, leaving silence "
-    "between them.\n"
+    "- Each prompt is ONE short spoken line, max about 14 words.\n"
+    "- Produce close to the requested number of prompts.\n"
+    "- The lines should read as one connected session, not a list of tips.\n"
     "- Plain spoken sentences only: no numbering, markdown, emojis, or stage "
     "directions.\n"
     "- Never mention that you are an AI or that this is a script."
@@ -132,7 +160,7 @@ def _prompt_id(theme: str, text: str) -> str:
     return "med_{}_{}".format(theme, digest)
 
 
-def _sanitize_prompts(theme: str, raw_prompts: List[Dict[str, Any]], duration_s: int) -> List[Dict[str, Any]]:
+def _sanitize_prompts(theme: str, raw_prompts: List[Dict[str, Any]], duration_s: int, max_prompts: int) -> List[Dict[str, Any]]:
     """Keep the model's wording/order but RE-SPACE the timings ourselves.
 
     The model reliably writes a good arc (settle in -> breathe -> body -> close)
@@ -152,12 +180,11 @@ def _sanitize_prompts(theme: str, raw_prompts: List[Dict[str, Any]], duration_s:
     if not texts:
         return []
 
-    # The model sometimes overshoots the requested count (e.g. 21 cues), which
-    # makes a session chatty and un-meditative. Cap it, keeping the first and
-    # last lines (the arc) and sampling the middle evenly.
-    _MAX_PROMPTS = 6
-    if len(texts) > _MAX_PROMPTS:
-        idxs  = sorted({round(i * (len(texts) - 1) / (_MAX_PROMPTS - 1)) for i in range(_MAX_PROMPTS)})
+    # The model can overshoot the requested count. Cap to the theme's target,
+    # keeping the first and last lines (the arc) and sampling the middle evenly.
+    cap = max(2, max_prompts)
+    if len(texts) > cap:
+        idxs  = sorted({round(i * (len(texts) - 1) / (cap - 1)) for i in range(cap)})
         texts = [texts[j] for j in idxs]
 
     n    = len(texts)
@@ -181,12 +208,19 @@ def _generate(theme: str, config) -> Optional[Dict[str, Any]]:
         return None
 
     duration_s = meta["duration_s"]
+    cues       = meta.get("cues", 8)
     user_content = (
-        "Write a {}-second guided meditation: {}. The breathing cadence is "
-        "about {}s in and {}s out. Produce 6 to 8 prompts, each with a time_s "
-        "between 0 and {}.".format(
-            duration_s, meta["intent"], meta["breath_in_s"], meta["breath_out_s"], duration_s - 5
-        )
+        "Theme: {title}. Duration: {dur} seconds. Breathing cadence: about "
+        "{bin}s in and {bout}s out.\n"
+        "Technique to teach: {tech}.\n"
+        "How to guide it: {guide}\n"
+        "Write about {cues} short spoken prompts that guide this technique as "
+        "one flowing session. Give the lines in order; we handle the timing, so "
+        "time_s can just be 0."
+    ).format(
+        title=meta["title"], dur=duration_s, bin=meta["breath_in_s"],
+        bout=meta["breath_out_s"], tech=meta["technique"], guide=meta["guide"],
+        cues=cues,
     )
 
     t0 = time.time()
@@ -215,7 +249,7 @@ def _generate(theme: str, config) -> Optional[Dict[str, Any]]:
     raw = (resp.choices[0].message.content or "").strip()
     try:
         parsed  = json.loads(raw)
-        prompts = _sanitize_prompts(theme, parsed.get("prompts", []), duration_s)
+        prompts = _sanitize_prompts(theme, parsed.get("prompts", []), duration_s, cues)
     except Exception as exc:
         logger.warning("meditation_agent: parse failed: {} raw={!r}".format(exc, raw[:120]))
         return None
