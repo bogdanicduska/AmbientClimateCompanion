@@ -159,8 +159,8 @@ Python 3.11 / Flask application containerised with Docker, designed to run on Go
 | `GET` | `/health` | Liveness check used by Cloud Run |
 | `POST` | `/speech/stt` | Whisper transcription — accepts base64 WAV, returns transcript |
 | `POST` | `/speech/tts` | OpenAI TTS — `?profile=m5stack` re-encodes to 16 kHz / 16-bit / mono so `speaker.playWAV` accepts it |
-| `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent (intent classifier + answer in one structured-output call) with current + 24 h indoor + yesterday outdoor + 3-day forecast snapshot → WHOOP-style one-line answer + queued TTS audio |
-| `GET` | `/speech/proactive` | Drains pending audio queue, otherwise evaluates the trigger catalog (see *Proactive announcements* below) |
+| `POST` | `/speech/ask` | Voice question → gpt-4o-mini agent (intent classifier + answer in one structured-output call) with current + 24 h indoor + yesterday outdoor + 3-day forecast snapshot → WHOOP-style one-line answer (the device speaks it by calling `/speech/tts` inline) |
+| `GET` | `/speech/proactive` | Evaluates the trigger catalog and returns the spoken audio if one fires (`204` when nothing's due) — see *Proactive announcements* below |
 | `GET` | `/speech/meditation` | Returns a meditation session config (title, duration, breath cadence, timed prompts) |
 | `GET` | `/speech/meditation/sessions` | Catalog of available meditation session ids |
 
@@ -348,7 +348,7 @@ The polling and playback logic is **inlined directly in `device/main_project.m5f
 
 ### Backend endpoint
 
-`GET /api/v1/speech/proactive` — drains a per-device pending audio queue first, then evaluates the trigger catalog. Modes:
+`GET /api/v1/speech/proactive` — evaluates the trigger catalog and, if a trigger fires, returns its spoken audio. Modes:
 
 | Query | Behavior |
 |-------|----------|

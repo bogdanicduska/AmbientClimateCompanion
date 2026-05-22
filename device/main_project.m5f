@@ -90,9 +90,9 @@ TVOC_POOR_MAX       = 200
 # -------------------------------------------------------
 # Units
 # -------------------------------------------------------
-env3 = unit.get(unit.ENV3, unit.PORTC)
+env3 = unit.get(unit.ENV3, unit.PORTA)
 pir  = unit.get(unit.PIR,  unit.PORTB)
-tvoc = unit.get(unit.TVOC, unit.PORTA)
+tvoc = unit.get(unit.TVOC, unit.PORTC)
 
 # -------------------------------------------------------
 # Proactive announcer — speaker-only (mic intentionally not used here).
@@ -113,9 +113,6 @@ ANNOUNCE_QUIET_START = 23         # local hour
 ANNOUNCE_QUIET_END   = 7          # local hour
 ANNOUNCE_WAV_RATE    = 16000      # backend's m5stack profile produces this
 ANNOUNCE_VOLUME      = 6
-# btnA on the dashboard fires this trigger via ?force=, bypassing backend
-# cooldowns. Set to a real trigger id from proactive_service.PROACTIVE_TRIGGERS.
-ANNOUNCE_FORCE_TRIGGER = "weather_announcement"
 
 # Announcer state
 _ann_last_idle_poll   = 0
@@ -358,20 +355,6 @@ def announce_tick():
         _ann_last_idle_poll = now_s
         _ann_do_poll()
 
-
-def force_announce_now():
-    """Defense / debug helper. Bypasses _speech_busy and quiet hours on the
-    device, AND sends ?force=ANNOUNCE_FORCE_TRIGGER to bypass the backend's
-    cooldown + condition check too. Always fires (modulo network errors)."""
-    global _speech_busy, _ann_motion_pending, _ann_last_motion_poll
-    _diag("[announce] FORCE poll requested trigger=" + ANNOUNCE_FORCE_TRIGGER)
-    _speech_busy           = False
-    _ann_motion_pending    = False
-    _ann_last_motion_poll  = 0
-    try:
-        _ann_do_poll(force_trigger=ANNOUNCE_FORCE_TRIGGER)
-    except Exception as e:
-        _diag("[announce] force poll error: " + str(e)[:60])
 
 # -------------------------------------------------------
 # State
@@ -2185,17 +2168,25 @@ def _draw_answer_card(answer):
     lcd.setCursor(8, 14)
     lcd.setColor(ORB_COLOR)
     lcd.print("Coach")
-    lcd.font(_COACH_FONT_MED)
-    lines   = _wrap_text(answer, 22)[:5]
-    total_h = len(lines) * 28
-    start_y = max(48, (240 - total_h) // 2)
+    # Body in the small font so long answers fit: ~26 chars/line, up to 7 lines
+    # (was 22 chars x 5 lines in the larger font). The full answer is always
+    # spoken regardless; if it STILL overflows, mark the last line with an
+    # ellipsis instead of silently dropping the rest.
+    lcd.font(_COACH_FONT_SM)
+    _ANS_MAX_LINES = 7
+    _ANS_LINE_H    = 24
+    all_lines = _wrap_text(answer, 26)
+    lines     = all_lines[:_ANS_MAX_LINES]
+    if len(all_lines) > _ANS_MAX_LINES and lines:
+        lines[-1] = lines[-1][:24] + "..."
+    total_h = len(lines) * _ANS_LINE_H
+    start_y = max(40, (240 - total_h) // 2)
     for i, line in enumerate(lines):
-        text_w = len(line) * 14
+        text_w = len(line) * 11
         x      = max(8, (320 - text_w) // 2)
-        lcd.setCursor(x, start_y + i * 28)
+        lcd.setCursor(x, start_y + i * _ANS_LINE_H)
         lcd.setColor(PHASE_TEXT_COLOR)
         lcd.print(line)
-    lcd.font(_COACH_FONT_SM)
     lcd.setCursor(110, 222)
     lcd.setColor(COACH_TITLE_DIM)
     lcd.print("tap to continue")
@@ -2496,11 +2487,6 @@ while True:
         current_page = 1
         draw_frame()
         update_all()
-    # btnA on the dashboard = force a proactive poll right now. Bypasses
-    # _speech_busy and PIR debounce so demos / defense don't depend on
-    # waving at the sensor and waiting for the right cadence to align.
-    if btnA.wasPressed():
-        force_announce_now()
 
     if btnB.wasPressed() and current_page != 2:
         current_page = 2
