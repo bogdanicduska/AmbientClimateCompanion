@@ -62,7 +62,7 @@ BACKEND_BASE_URL  = "https://ambient-climate-backend-977755576323.europe-west6.r
 BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
 
-DEVICE_ID = "m5stack-duska-home"
+DEVICE_ID = "m5stack-ana-home"
 AUTH_TOKEN        = "weather2026"
 OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
 OWM_CITY          = "Lausanne"
@@ -2269,7 +2269,7 @@ def _menu_item_display(item):
         tech = COACH_TECHNIQUES[item["tech_idx"]]
         return tech["name"], tech["subtitle"]
     if kind == "meditation":
-        return "Meditation",   "3 min — settle in"
+        return "Meditation",   "Choose a session"
     return "", ""
 
 
@@ -2330,6 +2330,90 @@ def _flash_row(row):
     utime.sleep_ms(100)
 
 
+# --- Meditation theme picker --------------------------------------------
+# Tapping "Meditation" in the coach menu opens this list; tap a theme to
+# start it, Btn A backs out. Five compact rows (the coach menu's 3-row
+# geometry is too tall for five). session_id maps to the backend themes in
+# meditation_agent._THEMES; the device sends it as ?session=<id>.
+MEDITATION_THEMES = (
+    {"session_id": "calm",     "title": "Calm",          "dur": "3 min"},
+    {"session_id": "sleep",    "title": "Sleep",         "dur": "4 min"},
+    {"session_id": "focus",    "title": "Focus",         "dur": "3 min"},
+    {"session_id": "stress",   "title": "Stress Relief", "dur": "3 min"},
+    {"session_id": "energize", "title": "Energize",      "dur": "2 min"},
+)
+PICK_ROW_TOP    = 42
+PICK_ROW_HEIGHT = 34
+PICK_ROW_PITCH  = 38
+
+
+def _pick_row_at(y):
+    if y < PICK_ROW_TOP:
+        return -1
+    rel = y - PICK_ROW_TOP
+    row = rel // PICK_ROW_PITCH
+    if row >= len(MEDITATION_THEMES):
+        return -1
+    if (rel - row * PICK_ROW_PITCH) >= PICK_ROW_HEIGHT:
+        return -1
+    return row
+
+
+def _draw_meditation_picker():
+    setScreenColor(COACH_BG)
+    lcd.font(_COACH_FONT_SM)
+    lcd.setCursor(8, 10)
+    lcd.setColor(PHASE_TEXT_COLOR)
+    lcd.print("Meditation")
+    lcd.setCursor(252, 10)
+    lcd.setColor(COACH_TITLE_DIM)
+    lcd.print("A back")
+    lcd.line(8, 32, 312, 32, 0x1A2A3A)
+    for i, theme in enumerate(MEDITATION_THEMES):
+        y = PICK_ROW_TOP + i * PICK_ROW_PITCH
+        lcd.rect(0, y, 320, PICK_ROW_HEIGHT, COACH_ROW_BG, COACH_ROW_BG)
+        lcd.rect(8, y + 5, 4, PICK_ROW_HEIGHT - 10, ORB_COLOR, ORB_COLOR)
+        lcd.font(_COACH_FONT_MED)
+        lcd.setCursor(24, y + 8)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print(theme["title"][:20])
+        lcd.font(_COACH_FONT_SM)
+        lcd.setCursor(258, y + 12)
+        lcd.setColor(COACH_SUBT_DIM)
+        lcd.print(theme["dur"])
+
+
+def _run_meditation_picker():
+    """Show the theme list. Returns the chosen session_id, or None if Btn A
+    was pressed to go back to the coach menu."""
+    _draw_meditation_picker()
+    _coach_wait_release()
+    last_status = False
+    while True:
+        if btnA.wasPressed():
+            return None
+        if _HAS_TOUCH:
+            try:
+                status = _touch.status()
+            except Exception:
+                status = False
+            if status and not last_status:
+                try:
+                    x, y = _touch.read()
+                except Exception:
+                    x, y = 0, 0
+                if y < 232:
+                    row = _pick_row_at(y)
+                    if row >= 0:
+                        y0 = PICK_ROW_TOP + row * PICK_ROW_PITCH
+                        lcd.rect(0, y0, 320, PICK_ROW_HEIGHT, COACH_ROW_FLASH, COACH_ROW_FLASH)
+                        utime.sleep_ms(100)
+                        return MEDITATION_THEMES[row]["session_id"]
+            last_status = status
+        utime.sleep_ms(40)
+        _coach_feed_wdt()
+
+
 def _execute_menu_item(row):
     global _speech_busy
     item = COACH_MENU_ITEMS[row]
@@ -2343,7 +2427,9 @@ def _execute_menu_item(row):
             _ensure_coach_voice_assets()
             run_coach_session(tech)
         elif kind == "meditation":
-            _run_meditation(item.get("session_id", "calm"))
+            chosen = _run_meditation_picker()
+            if chosen:
+                _run_meditation(chosen)
     finally:
         _release_mic()
         _speech_busy = False

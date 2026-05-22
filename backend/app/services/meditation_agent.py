@@ -155,7 +155,7 @@ def _sanitize_prompts(theme: str, raw_prompts: List[Dict[str, Any]], duration_s:
     # The model sometimes overshoots the requested count (e.g. 21 cues), which
     # makes a session chatty and un-meditative. Cap it, keeping the first and
     # last lines (the arc) and sampling the middle evenly.
-    _MAX_PROMPTS = 10
+    _MAX_PROMPTS = 6
     if len(texts) > _MAX_PROMPTS:
         idxs  = sorted({round(i * (len(texts) - 1) / (_MAX_PROMPTS - 1)) for i in range(_MAX_PROMPTS)})
         texts = [texts[j] for j in idxs]
