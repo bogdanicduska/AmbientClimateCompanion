@@ -144,6 +144,10 @@ The room's current human-readable identity — a short label that summarises how
 |-----------|-----------|
 | ![Dashboard](docs/device_dashboard.jpeg) | ![WiFi menu](docs/device_wifi_menu.jpeg) |
 
+| Coach menu | Meditation picker |
+|------------|-------------------|
+| ![Coach menu](docs/coach_menu.jpeg) | ![Meditation picker](docs/meditation_menu.jpeg) |
+
 ### Backend — Flask REST API (`backend/`)
 Python 3.11 / Flask application containerised with Docker, designed to run on Google Cloud Run.
 
@@ -470,6 +474,19 @@ Every `/speech/ask` response is tagged with one of eight intents from `backend/a
 | `coach_readiness` | Readiness, recovery, air-strain scores |
 | `coach_advice` | Actionable suggestions (open window, humidify, take a break) |
 | `unknown` | Off-topic or unanswerable from the snapshot — triggers the deflection |
+
+#### Example questions to ask
+
+Reliable demo questions, each exercising a different part of the pipeline:
+
+| Say to the device | Routes to | Answered from | What it shows |
+|----|----|----|----|
+| "What was the highest temperature **in here** today?" | `room_history` | BigQuery 24 h aggregate | stored history is real, not invented |
+| "What was the weather **yesterday**?" | `weather_yesterday` | BigQuery (previous day) | the "show your work" data path |
+| "How's the air quality **in here** right now?" | `room_now` | live indoor sensor snapshot | current TVOC / eCO2 from the device |
+| "Tell me a joke." | `unknown` | — (deflection) | the agent declines off-topic asks instead of hallucinating |
+
+**Phrasing tip:** say **"in here"** for indoor and **"outside"** for outdoor. A bare "highest temperature today" is ambiguous (indoor vs outdoor) and can route differently from one run to the next — and since the device transcribes your speech with Whisper first, speak the question clearly.
 
 How the routing actually works — single LLM round-trip:
 
