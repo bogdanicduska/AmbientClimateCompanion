@@ -47,10 +47,11 @@
     },
     {
       "id": "room_history",
-      "description": "Past indoor conditions over the last 24 hours: max/min temp, humidity, peak air quality.",
+      "description": "Past indoor conditions: the last 24 hours (last_24h block) or yesterday specifically (indoor_yesterday block) — max/min temp, humidity, peak air quality.",
       "examples": [
         "how was the room earlier",
-        "what was the highest temperature today",
+        "what was the highest temperature in here today",
+        "what was the max indoor temperature yesterday",
         "when was the air worst",
         "has it been humid",
         "how did the room change today"

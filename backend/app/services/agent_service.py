@@ -46,6 +46,9 @@ _SYSTEM_PROMPT = (
     "- Maximum two short sentences. Ideally one.\n"
     "- Plain units (C, %, ppb, ppm). No technical jargon unless asked.\n"
     "- Reference actual numbers from the snapshot when relevant.\n"
+    "- Match the time window to the question: use 'current' for now, 'last_24h' "
+    "for today or the last 24 hours, and the '*_yesterday' blocks for yesterday. "
+    "Never answer a 'yesterday' question from 'last_24h'.\n"
     "- No filler greetings, sign-offs, or apologies.\n"
     "- If the snapshot lacks the data needed, say so plainly in one line "
     "and tag the intent as 'unknown'.\n\n"
@@ -96,28 +99,47 @@ def _modal(values: List[Any]) -> Optional[Any]:
     return max(counts.items(), key=lambda kv: kv[1])[0]
 
 
-def _outdoor_yesterday(device_id: str, config) -> Optional[Dict[str, Any]]:
-    """Aggregate outdoor columns from BigQuery for the previous UTC calendar
-    day. Returns None if no rows exist in that window — the LLM will then
-    answer weather_yesterday with a 'no data' deflection."""
+def _yesterday_window(device_id: str, config) -> Optional[Dict[str, Any]]:
+    """Aggregate indoor AND outdoor columns from BigQuery for the previous UTC
+    calendar day, in one query. Returned with separate 'outdoor' and 'indoor'
+    sub-dicts; _build_snapshot splits them into outdoor_yesterday / indoor_yesterday.
+    Returns None if no rows exist in that window — the LLM then answers a
+    'yesterday' question with a 'no data' deflection."""
     end   = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     start = end - timedelta(days=1)
     rows  = get_history_window(device_id, config, start.isoformat(), end.isoformat())
     if not rows:
         return None
 
-    temps    = [r["outdoor_temp"]     for r in rows if r.get("outdoor_temp")     is not None]
-    hums     = [r["outdoor_humidity"] for r in rows if r.get("outdoor_humidity") is not None]
-    weathers = [r["outdoor_weather"]  for r in rows if r.get("outdoor_weather")]
+    def _vals(col):
+        return [r[col] for r in rows if r.get(col) is not None]
+
+    o_temps  = _vals("outdoor_temp")
+    o_hums   = _vals("outdoor_humidity")
+    weathers = [r["outdoor_weather"] for r in rows if r.get("outdoor_weather")]
+    i_temps  = _vals("indoor_temp")
+    i_hums   = _vals("indoor_humidity")
+    aqs      = _vals("air_quality")
+    eco2s    = _vals("indoor_eco2")
 
     return {
-        "date_utc":         start.date().isoformat(),
-        "records":          len(rows),
-        "outdoor_temp_min": round(min(temps), 1) if temps else None,
-        "outdoor_temp_max": round(max(temps), 1) if temps else None,
-        "outdoor_hum_min":  round(min(hums), 1)  if hums  else None,
-        "outdoor_hum_max":  round(max(hums), 1)  if hums  else None,
-        "weather_mode":     _modal(weathers),
+        "date_utc": start.date().isoformat(),
+        "records":  len(rows),
+        "outdoor": {
+            "outdoor_temp_min": round(min(o_temps), 1) if o_temps else None,
+            "outdoor_temp_max": round(max(o_temps), 1) if o_temps else None,
+            "outdoor_hum_min":  round(min(o_hums), 1)  if o_hums  else None,
+            "outdoor_hum_max":  round(max(o_hums), 1)  if o_hums  else None,
+            "weather_mode":     _modal(weathers),
+        },
+        "indoor": {
+            "temp_min_c":          round(min(i_temps), 1) if i_temps else None,
+            "temp_max_c":          round(max(i_temps), 1) if i_temps else None,
+            "humidity_min_pct":    round(min(i_hums), 1)  if i_hums  else None,
+            "humidity_max_pct":    round(max(i_hums), 1)  if i_hums  else None,
+            "air_quality_max_ppb": round(max(aqs), 0)     if aqs     else None,
+            "eco2_max_ppm":        round(max(eco2s), 0)   if eco2s   else None,
+        },
     }
 
 
@@ -169,11 +191,13 @@ def _build_snapshot(device_id: str, config) -> Dict[str, Any]:
         logger.warning(f"agent: snapshot.last_24h failed: {exc}")
 
     try:
-        yest = _outdoor_yesterday(device_id, config)
+        yest = _yesterday_window(device_id, config)
         if yest:
-            snapshot["outdoor_yesterday"] = yest
+            base = {"date_utc": yest["date_utc"], "records": yest["records"]}
+            snapshot["outdoor_yesterday"] = dict(base, **yest["outdoor"])
+            snapshot["indoor_yesterday"]  = dict(base, **yest["indoor"])
     except Exception as exc:
-        logger.warning(f"agent: snapshot.outdoor_yesterday failed: {exc}")
+        logger.warning(f"agent: snapshot.yesterday failed: {exc}")
 
     try:
         forecast = fetch_forecast(config)
