@@ -8,6 +8,16 @@ We treat the room like a living environment with performance states. Rather than
 
 ---
 
+## Live deployment
+
+| Service | URL |
+|---------|-----|
+| **Dashboard** | https://ambient-dashboard-977755576323.europe-west6.run.app |
+| **Backend API** | https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1 |
+| **Health check** | https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/health |
+
+---
+
 ## Core Metrics
 
 ### 1. Room Readiness
@@ -237,7 +247,7 @@ docker build -t ambient-dashboard ./dashboard
 
 # Run locally
 docker run -p 8080:8080 `
-  -e BACKEND_URL=https://your-backend.run.app/api/v1 `
+  -e BACKEND_URL=https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1 `
   -e DEVICE_ID=m5stack-duska-home `
   ambient-dashboard
 
