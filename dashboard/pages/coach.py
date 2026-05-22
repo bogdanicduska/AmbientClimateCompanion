@@ -195,7 +195,7 @@ def _why_now_sentence(lrs: dict, ritual: dict) -> str:
 def _factor_row(label: str, value: str, color: str) -> None:
     st.markdown(
         f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #0F1A28;">'
-        f'<span style="color:#445566;font-size:0.8rem;">{label}</span>'
+        f'<span style="color:#667788;font-size:0.8rem;">{label}</span>'
         f'<span style="color:{color};font-weight:600;font-size:0.85rem;">{value}</span>'
         f'</div>',
         unsafe_allow_html=True,

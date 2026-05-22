@@ -30,7 +30,7 @@ def metric_hero_card(
     if value is None:
         html = (
             '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
-            f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">{label}</div>'
+            f'<div style="font-size:0.68rem;color:#5A8AAA;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">{label}</div>'
             '<div style="font-size:2.4rem;font-weight:700;color:#334455;">—</div>'
             '</div>'
         )
@@ -47,18 +47,18 @@ def metric_hero_card(
     )
     subtitle_display = subtitle[:60] + "…" if len(subtitle) > 60 else subtitle
     subtitle_html = (
-        f'<div style="font-size:0.72rem;color:#3A5A6A;margin-top:6px;line-height:1.4;'
+        f'<div style="font-size:0.72rem;color:#6A8A9A;margin-top:6px;line-height:1.4;'
         f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{subtitle_display}</div>'
         if subtitle_display else ""
     )
     band_html = (
-        f'<div style="font-size:0.75rem;color:#556677;">{band_label}</div>'
+        f'<div style="font-size:0.75rem;color:#778899;">{band_label}</div>'
         if band_label else ""
     )
 
     html = (
         '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
-        f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">{label}</div>'
+        f'<div style="font-size:0.68rem;color:#5A8AAA;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">{label}</div>'
         f'<div style="display:flex;align-items:baseline;">'
         f'<div style="font-size:2.4rem;font-weight:700;color:{color};line-height:1.1;">{value}</div>'
         f'{trend_html}'
@@ -137,7 +137,7 @@ def room_state_card(state: str | None) -> None:
         f'<div style="background:{m["bg"]};border:1px solid {m["border"]};border-radius:12px;padding:20px;">'
         '<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Room State</div>'
         f'<div style="font-size:1.6rem;font-weight:700;color:{m["text"]};letter-spacing:0.06em;">{state}</div>'
-        f'<div style="font-size:0.75rem;color:#445566;margin-top:6px;">{m["subtitle"]}</div>'
+        f'<div style="font-size:0.75rem;color:#667788;margin-top:6px;">{m["subtitle"]}</div>'
         '</div>'
     )
     st.markdown(html, unsafe_allow_html=True)

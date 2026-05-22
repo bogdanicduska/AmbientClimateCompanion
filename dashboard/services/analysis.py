@@ -205,7 +205,7 @@ def get_notable_moments(df: pd.DataFrame) -> list[dict]:
         row      = df.loc[peak_idx]
         moments.append({
             "title":    "Highest Strain",
-            "subtitle": "Air quality was most degraded",
+            "subtitle": "Highest air-quality strain",
             "value":    f"Air Strain {int(row['air_strain'])}",
             "time":     _fmt_time(row),
             "color":    "#FF8844",
@@ -218,7 +218,7 @@ def get_notable_moments(df: pd.DataFrame) -> list[dict]:
         row      = df.loc[best_idx]
         moments.append({
             "title":    "Best Recovery",
-            "subtitle": "Conditions most suited for rest",
+            "subtitle": "Best conditions for recovery",
             "value":    f"Recovery {int(row['recovery_score'])}",
             "time":     _fmt_time(row),
             "color":    "#66CCFF",

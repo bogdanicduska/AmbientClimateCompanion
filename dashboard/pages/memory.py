@@ -131,7 +131,16 @@ def _replay_panel(df: pd.DataFrame, points: list[dict]) -> None:
     if not snap:
         return
 
-    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="margin-top:10px;padding:8px 14px;background:#0A1522;'
+        f'border:1px solid #1A3A5A;border-radius:8px;display:inline-block;">'
+        f'<span style="font-size:0.68rem;color:#5A8AAA;letter-spacing:0.12em;'
+        f'text-transform:uppercase;">Viewing  </span>'
+        f'<span style="font-size:0.9rem;font-weight:600;color:#AACCEE;">{labels[idx]}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
     left, right = st.columns(2)
     state = snap.get("room_state", "")
@@ -187,7 +196,7 @@ def _replay_coaching(snap: dict) -> None:
     st.markdown(
         f'<div style="margin-top:10px;padding:10px 14px;background:#060E18;'
         f'border-left:3px solid {color};border-radius:0 8px 8px 0;">'
-        f'<span style="font-size:0.7rem;color:#2A4A6A;letter-spacing:0.12em;'
+        f'<span style="font-size:0.7rem;color:#5A8AAA;letter-spacing:0.12em;'
         f'text-transform:uppercase;">Coaching at that moment</span><br>'
         f'<span style="font-size:0.85rem;color:{color};font-weight:600;">{ritual.get("title","")}</span>'
         f'<span style="font-size:0.78rem;color:#445566;margin-left:8px;">→ {ritual.get("next_step","")}</span>'
@@ -206,13 +215,13 @@ def _moment_card(m: dict) -> None:
         f'padding:16px;border-top:2px solid {color};">'
         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
         f'<span style="color:{color};font-size:1rem;">{icon}</span>'
-        f'<span style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.12em;'
+        f'<span style="font-size:0.68rem;color:#5A8AAA;letter-spacing:0.12em;'
         f'text-transform:uppercase;">{m.get("title","")}</span>'
         f'</div>'
-        f'<div style="font-size:1rem;font-weight:700;color:{color};margin-bottom:2px;">'
+        f'<div style="font-size:1.05rem;font-weight:700;color:{color};margin-bottom:2px;">'
         f'{m.get("value","—")}</div>'
-        f'<div style="font-size:0.72rem;color:#445566;margin-top:2px;">{m.get("time","")}</div>'
-        f'<div style="font-size:0.7rem;color:#2A3A4A;margin-top:4px;">{m.get("subtitle","")}</div>'
+        f'<div style="font-size:0.72rem;color:#556677;margin-top:2px;">{m.get("time","")}</div>'
+        f'<div style="font-size:0.75rem;color:#667788;margin-top:4px;">{m.get("subtitle","")}</div>'
         f'</div>',
         unsafe_allow_html=True,
     )

@@ -28,6 +28,68 @@ st.markdown(
     [data-testid="stDecoration"] { display: none; }
     footer { display: none; }
     #MainMenu { display: none; }
+
+    /* ── Sidebar nav: base color for ALL text nodes — catches any Streamlit DOM structure ── */
+    [data-testid="stSidebar"] span { color: #AABCCC !important; }
+    [data-testid="stSidebar"] a    { color: #AABCCC !important; }
+    [data-testid="stSidebar"] a:hover { color: #DDEEFF !important; }
+
+    /* ── Nav group headers (Overview / History / System) — any element with role=group ── */
+    [data-testid="stSidebar"] [role="group"] > div > span,
+    [data-testid="stSidebar"] [role="group"] > div > p,
+    [data-testid="stSidebar"] [role="group"] > span,
+    [data-testid="stSidebar"] [role="group"] > p,
+    [data-testid*="SidebarNav"] [role="group"] span,
+    [data-testid*="SidebarNav"] [role="group"] p {
+        color: #7AAABB !important;
+        font-weight: 600 !important;
+    }
+
+    /* ── Active nav item ── */
+    [data-testid="stSidebar"] a[aria-current="page"] span,
+    [data-testid="stSidebar"] a[aria-selected="true"] span,
+    [data-testid="stSidebar"] [aria-current="page"] span { color: #DDEEFF !important; }
+
+    /* ── Sidebar widget labels (Device, History window, Auto-refresh) ── */
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] span {
+        color: #99AABB !important;
+    }
+
+    /* ── Sidebar captions ── */
+    [data-testid="stSidebar"] .stCaption p,
+    [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+        color: #5A7A8A !important;
+    }
+
+    /* ── Sidebar divider ── */
+    [data-testid="stSidebar"] hr { border-color: #1A2A3A !important; }
+
+    /* ── Sidebar button (Refresh now) ── */
+    [data-testid="stSidebar"] button {
+        background-color: #0D1A28 !important;
+        border-color: #1A3A5A !important;
+        color: #AABCCC !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        border-color: #4A7A9A !important;
+        color: #DDEEFF !important;
+    }
+
+    /* ── Dark selectbox ── */
+    [data-testid="stSidebar"] [data-baseweb="select"] > div:first-child {
+        background-color: #0D1A28 !important;
+        border-color: #1A3A5A !important;
+        color: #C8D8E8 !important;
+    }
+    [data-testid="stSidebar"] [data-baseweb="select"] svg { color: #4A7A9A !important; }
+    [data-testid="stSidebar"] [data-baseweb="popover"] { background-color: #0D1A28 !important; }
+    [data-testid="stSidebar"] [role="option"] {
+        background-color: #0D1A28 !important;
+        color: #C8D8E8 !important;
+    }
+    [data-testid="stSidebar"] [role="option"]:hover { background-color: #1A2A3A !important; }
     </style>""",
     unsafe_allow_html=True,
 )

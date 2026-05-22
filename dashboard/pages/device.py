@@ -174,8 +174,10 @@ def _wifi_card(indoor: dict) -> None:
     else:             quality, color, bars = "Weak",      "#FF4422", 1
 
     bars_html = "".join(
-        f'<div style="width:10px;height:{10 + i*6}px;background:{"' + color + '" if i < bars else "#1A2A3A"};'
-        f'border-radius:2px;margin-right:3px;align-self:flex-end;"></div>'
+        '<div style="width:10px;height:{}px;background:{};'
+        'border-radius:2px;margin-right:3px;align-self:flex-end;"></div>'.format(
+            10 + i * 6, color if i < bars else "#1A2A3A"
+        )
         for i in range(4)
     )
 

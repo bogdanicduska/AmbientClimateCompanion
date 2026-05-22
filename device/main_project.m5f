@@ -62,7 +62,7 @@ BACKEND_BASE_URL  = "https://ambient-climate-backend-977755576323.europe-west6.r
 BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
 
-DEVICE_ID = "m5stack-ana-home"
+DEVICE_ID = "m5stack-duska-home"
 AUTH_TOKEN        = "weather2026"
 OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
 OWM_CITY          = "Lausanne"
@@ -772,6 +772,45 @@ def compute_room_metrics():
         room_state = "Restless"
     else:
         room_state = "Calm"
+
+def debug_room_state_choice():
+    try:
+        now_hour = utime.localtime()[3]
+    except:
+        now_hour = -1
+
+    motion_recent = (
+        last_motion_trigger_time is not None and
+        (utime.time() - last_motion_trigger_time) < 300
+    )
+
+    print("----- ROOM STATE DEBUG -----")
+    print("time=", fmt_time(), "hour=", now_hour, "evening=", _is_evening())
+    print("temp=", last_temp,
+          "humidity=", last_humidity,
+          "tvoc=", last_tvoc,
+          "eco2=", last_eco2,
+          "motion=", last_motion,
+          "motion_recent=", motion_recent)
+    print("readiness=", room_readiness,
+          "recovery=", recovery_score,
+          "strain=", air_strain)
+
+    if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
+        print("chosen_by=DRY because humidity <", HUMIDITY_LOW_THRESHOLD)
+    elif last_tvoc is not None and (last_tvoc >= AQ_POOR_THRESHOLD or (air_strain is not None and air_strain >= 65)):
+        print("chosen_by=HEAVY because tvoc>=threshold or strain>=65")
+    elif motion_recent or last_motion == 1:
+        print("chosen_by=SOCIAL because motion_recent or motion==1")
+    elif _is_evening() and recovery_score is not None and recovery_score >= 65:
+        print("chosen_by=SLEEP-FRIENDLY because evening and recovery>=65")
+    elif recovery_score is not None and recovery_score >= 70:
+        print("chosen_by=CALM because recovery>=70")
+    elif room_readiness is not None and room_readiness >= 70:
+        print("chosen_by=FRESH because readiness>=70")
+    else:
+        print("chosen_by=RESTLESS fallback")
+    print("----------------------------")
 
 # -------------------------------------------------------
 # AQ helpers
@@ -2366,6 +2405,7 @@ def open_coach_menu():
 # 0. Load flash cache — room has memory before any network call
 load_last_state()
 compute_room_metrics()
+debug_room_state_choice()
 
 # 0a. SD mount + diag log — speech features write WAVs to /sd when available,
 # /flash otherwise. Diag log accumulates per-boot under /flash/diag.log.
@@ -2400,6 +2440,7 @@ try:
     lbl_time.setText(fmt_time())
     lbl_date.setText(fmt_date())
     compute_room_metrics()
+    debug_room_state_choice()
     update_readiness_card()
     update_recovery_card()
     update_strain_tile()
@@ -2421,6 +2462,7 @@ try:
         cache_norm  = (last_cache_ts or "")[:19]
         if cloud_norm >= cache_norm:
             compute_room_metrics()
+            debug_room_state_choice()
             update_all()
             save_last_state()
     else:
@@ -2531,6 +2573,7 @@ while True:
             prev_motion = last_motion
 
             compute_room_metrics()
+            debug_room_state_choice()
             print("[metrics] readiness=%s recovery=%s strain=%s state=%s | temp=%s hum=%s tvoc=%s motion_recent=%s evening=%s" % (
                 room_readiness, recovery_score, air_strain, room_state,
                 last_temp, last_humidity, last_tvoc,

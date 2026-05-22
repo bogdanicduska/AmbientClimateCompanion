@@ -9,7 +9,7 @@ import streamlit as st
 def snapshot_card_open(title: str) -> None:
     st.markdown(
         f'<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;padding:20px;">'
-        f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.15em;text-transform:uppercase;'
+        f'<div style="font-size:0.68rem;color:#5A8AAA;letter-spacing:0.15em;text-transform:uppercase;'
         f'margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid #142030;">{title}</div>',
         unsafe_allow_html=True,
     )
@@ -37,7 +37,7 @@ def sensor_row(label: str, value, unit: str = "", color: str = "#CCCCCC", hint: 
     st.markdown(
         f'<div style="display:flex;justify-content:space-between;align-items:baseline;'
         f'padding:6px 0;border-bottom:1px solid #0F1A28;">'
-        f'<span style="color:#445566;font-size:0.8rem;">{label}</span>'
+        f'<span style="color:#667788;font-size:0.8rem;">{label}</span>'
         f'<span style="display:flex;align-items:baseline;">'
         f'<span style="color:{color};font-weight:600;font-size:0.9rem;">{display}</span>'
         f'{hint_html}'

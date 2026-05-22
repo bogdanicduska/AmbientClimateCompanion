@@ -52,7 +52,10 @@ def _story_parts(df: pd.DataFrame) -> tuple[str, list[str]]:
             top_state = counts.index[0]
             top_pct   = int(counts.iloc[0] * 100)
             if top_pct >= 30:
-                headline = f"Your room was {top_state.lower()} for {top_pct}% of the recorded window."
+                if top_pct >= 95:
+                    headline = f"Your room stayed {top_state.lower()} for the entire recorded window."
+                else:
+                    headline = f"Your room was {top_state.lower()} for {top_pct}% of the window."
 
     if not headline and "room_readiness" in df.columns:
         avg_r = int(df["room_readiness"].mean())
