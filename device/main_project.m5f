@@ -1959,7 +1959,7 @@ def _ensure_meditation_prompts(prompts):
         path = _meditation_prompt_path(pid)
         try:
             uos.stat(path)
-            cached.append({"path": path, "time_s": time_s})
+            cached.append({"path": path, "time_s": time_s, "text": text})
             continue
         except Exception:
             pass
@@ -1978,7 +1978,7 @@ def _ensure_meditation_prompts(prompts):
                         if not chunk:
                             break
                         dst.write(chunk)
-            cached.append({"path": path, "time_s": time_s})
+            cached.append({"path": path, "time_s": time_s, "text": text})
         except Exception as e:
             _diag("med prompt copy failed: " + str(e)[:40])
         gc.collect()
@@ -1999,6 +1999,26 @@ def _play_meditation_prompt(path):
         _speaker_last_play_ms = utime.ticks_ms()
     except Exception as e:
         _diag("med prompt play err: " + str(e)[:40])
+
+
+def _draw_meditation_caption(text):
+    """Show the spoken cue as on-screen text below the orb (the small speaker
+    is hard to make out). The band at y>=182 is clear of the orb's wipe region
+    — the same zone the box-breathing countdown uses — so the pulsing orb above
+    never overwrites it. Cleared and redrawn each time a new cue fires."""
+    if not text:
+        return
+    lcd.rect(0, 182, 320, 58, COACH_BG, COACH_BG)
+    lcd.font(_COACH_FONT_SM)
+    lines = _wrap_text(text, 28)[:3]
+    y = 184
+    for line in lines:
+        w = len(line) * 10
+        x = max(4, (320 - w) // 2)
+        lcd.setCursor(x, y)
+        lcd.setColor(PHASE_TEXT_COLOR)
+        lcd.print(line)
+        y += 18
 
 
 def _run_meditation(session_id="calm"):
@@ -2067,9 +2087,9 @@ def _run_meditation(session_id="calm"):
     lcd.setColor(PHASE_TEXT_COLOR)
     lcd.print(title[:30])
     lcd.font(_COACH_FONT_SM)
-    lcd.setCursor(20, 215)
+    lcd.setCursor(236, 16)   # cancel hint top-right — bottom band is for captions
     lcd.setColor(COACH_TITLE_DIM)
-    lcd.print("A or tap to stop")
+    lcd.print("A: stop")
 
     # Drain stale presses / touches from the loading screen.
     try: btnA.wasPressed()
@@ -2094,6 +2114,7 @@ def _run_meditation(session_id="calm"):
 
             # Fire any prompts that have come due since the last frame.
             while next_prompt_idx < len(cached) and elapsed_s >= cached[next_prompt_idx]["time_s"]:
+                _draw_meditation_caption(cached[next_prompt_idx].get("text", ""))
                 _play_meditation_prompt(cached[next_prompt_idx]["path"])
                 next_prompt_idx += 1
 
