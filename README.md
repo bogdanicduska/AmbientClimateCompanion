@@ -96,7 +96,7 @@ The room's current human-readable identity — a short label that summarises how
 
 **Dashboard UI (320 × 240, dark background)**
 
-Page 1 — Dashboard:
+Page 1 — Dashboard (Button A):
 ```
 ┌────────────────────────────────────────┐
 │  ● Sun 24 May   21:31            LIVE  │  header: dot, date, time, badge
@@ -115,7 +115,7 @@ Page 1 — Dashboard:
 └─────────────────┴───────────────┴──────────────┘
 ```
 
-Page 2 — Coach:
+Page 2 — Coach (Button B):
 ```
 ┌────────────────────────────────────────┐
 │               23:48          COACH     │  header
@@ -180,13 +180,13 @@ Page 3 — Coach menu (Button C):
 
 **Device screenshots**
 
-| Dashboard | WiFi menu |
-|-----------|-----------|
-| ![Dashboard](docs/device_dashboard.jpeg) | ![WiFi menu](docs/device_wifi_menu.jpeg) |
+| Dashboard (Page 1) | Coach (Page 2) |
+|--------------------|----------------|
+| ![Dashboard](docs/device_dashboard.jpeg) | ![Coach](docs/Device_coach.jpeg) |
 
-| Coach menu | Meditation picker |
-|------------|-------------------|
-| ![Coach menu](docs/coach_menu.jpeg) | ![Meditation picker](docs/meditation_menu.jpeg) |
+| Coach menu (Page 3) | WiFi menu |
+|---------------------|-----------|
+| ![Coach menu](docs/coach_menu.jpeg) | ![WiFi menu](docs/device_wifi_menu.jpeg) |
 
 **3D-printed enclosure**
 
