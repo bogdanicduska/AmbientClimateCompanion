@@ -62,7 +62,7 @@ BACKEND_BASE_URL  = "https://ambient-climate-backend-977755576323.europe-west6.r
 BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
 
-DEVICE_ID = "m5stack-ana-home"
+DEVICE_ID = "m5stack-duska-home"
 AUTH_TOKEN        = "weather2026"
 OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
 OWM_CITY          = "Lausanne"
@@ -941,47 +941,47 @@ def get_status_message():
     now = utime.time()
     # 1. Offline
     if network_state == "offline":
-        return "Offline. Showing last known values.", 0xFF4444
+        return "Offline.", 0xFF4444
     # 2. Sync failed
     if telemetry_state == "failed":
-        return "Sync failed. Data may be stale.", 0xFF7700
+        return "Sync failed.", 0xFF7700
     # 3. Weather stale
     if weather_state in ("stale", "failed"):
-        return "Weather data outdated.", 0xFFAA00
+        return "Weather outdated.", 0xFFAA00
     # 4. Air strain rising
     if air_strain is not None and air_strain >= 60:
-        return "Air heavy. Consider ventilation.", 0xFF5500
+        return "Air heavy. Ventilate.", 0xFF5500
     if air_strain is not None and air_strain >= 35:
         return "Air strain rising.", 0xFFAA00
     # 5. Dry conditions
     if last_humidity is not None and last_humidity < HUMIDITY_LOW_THRESHOLD:
-        return "Dry air detected.", 0xFF8800
+        return "Dry air.", 0xFF8800
     # 6. Just recovered from cloud (within 2 min of boot sync)
     if cloud_sync_state == "ok" and (now - last_cloud_sync_time) < 120:
-        return "Recovered from cloud.", 0x00CCFF
+        return "Cloud sync ok.", 0x00CCFF
     # 7. Motion detected (10 s display window — separate from 300 s metric window)
     if last_motion_trigger_time is not None and (now - last_motion_trigger_time) < 10:
         return "Motion detected.", 0xCCCC00
     # 8. Recovery-friendly conditions
     if recovery_score is not None and recovery_score >= 80:
-        return "Recovery-friendly now.", 0x5599BB
+        return "Good for recovery.", 0x5599BB
     # 9. Readiness high
     if room_readiness is not None and room_readiness >= 80:
         if _is_evening():
-            return "Readiness high. Have a nice sleep.", 0x5599BB
+            return "Sleep well.", 0x5599BB
         return "Readiness high.", 0x00CC55
     # 10. Fresh state
     if room_state == "Fresh":
-        return "Room is fresh and ready.", 0x00CC55
+        return "Room is fresh.", 0x00CC55
     if room_state == "Calm":
-        return "Calm conditions for focus.", 0x4488BB
+        return "Calm. Focus ready.", 0x4488BB
     if room_state == "Sleep-Friendly":
-        return "Recovery-friendly evening room.", 0x5599BB
+        return "Good for rest.", 0x5599BB
     if room_state == "Social":
-        return "Room active. Air strain may rise.", 0xCCCC00
+        return "Room active.", 0xCCCC00
     if room_state == "Restless":
-        return "Room conditions unbalanced.", 0xFFAA00
-    return "Monitoring room conditions.", 0x444444
+        return "Conditions unbalanced.", 0xFFAA00
+    return "Monitoring...", 0x444444
 
 # -------------------------------------------------------
 # Weather icon — drawn with lcd primitives at (x, y), 30x30px

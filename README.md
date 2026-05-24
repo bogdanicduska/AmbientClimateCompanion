@@ -96,26 +96,65 @@ The room's current human-readable identity — a short label that summarises how
 
 **Dashboard UI (320 × 240, dark background)**
 
+Page 1 — Dashboard:
 ```
 ┌────────────────────────────────────────┐
-│  ● Thu 17 Apr   LIVE            14:32  │  header: dot, date, badge, time
+│  ● Sun 24 May   21:31            LIVE  │  header: dot, date, time, badge
+├──────────────────────┬─────────────────┤
+│  READINESS           │  RECOVERY       │
+│  70                  │  66   Fair  ◆   │  hero cards
+│  [ FRESH ]           │  24.4 C         │
+├──────────┬───────────┼─────────────────┤
+│  STRAIN  │  27.2 C   │  GOOD           │
+│  22      │  52 %     │  CO2  523       │  tile cards
+│  Low     │  1029 hPa │  Quiet          │
+├──────────┴───────────┴─────────────────┤
+│  Room is fresh.                        │  status line
+├─────────────────┬──────────────────────┤
+│  Mon   16-28C   │  Tue  17-23C  │  Wed  18-25C  │  3-day forecast
+└─────────────────┴───────────────┴──────────────┘
+```
+
+Page 2 — Coach:
+```
+┌────────────────────────────────────────┐
+│               23:48          COACH     │  header
 ├────────────────────────────────────────┤
-│     23.4 °C          Sync failed       │  hero: outdoor temp, status strip
-│  Partly cloudy               HUM 62%  │
+│  VENTILATE                             │  action word
+│  ≡ Fresh Air Ritual                    │  subtitle
 ├────────────────────────────────────────┤
-│  TEMP    │   HUMID   │   PRESS         │  indoor strip
-│  21.1°C  │   58 %    │   1013 hPa     │
-├────────────────────────────────────────┤
-│  [ GOOD ]   45 ppb         eCO2 412   │  AQ strip
-├────────────────────────────────────────┤
-│  Mon       │  Tue      │  Wed          │  3-day forecast
-│  16/23°C   │  14/20°C  │  15/22°C     │
-│  Clouds    │  Rain     │  Clear        │
+│  DO THIS                               │
+│  Open a window now                     │  steps
+│  Take 5 deep breaths                   │
+├───────────────┬───────────┬────────────┤
+│  RDY  52      │  RCV  47  │  AIR  77   │  score chips
+├───────────────┴───────────┴────────────┤
+│  NEXT                                  │
+│  Done in 3 min                         │  next step
 └────────────────────────────────────────┘
 ```
 
-- **Source badge** (header): `LIVE` / `CLOUD` / `CACHED` / `OFFLINE` / `SEND FAIL` / `WX OLD` — color-coded by severity
-- **Status strip** (hero row, right side): priority-ordered room-state message — `Offline` › `Sync failed` › `Air strain` › `Dry air` › `Restless` › `Room synced` (15 s) › `Motion` (8 s) › `Weather fresh` (30 s) › `Fresh` / `Calm` / `Sleep-Friendly` / `Social`
+Page 3 — Coach menu (Button C):
+```
+┌────────────────────────────────────────┐
+│  Coach                        A back   │  header
+├────────────────────────────────────────┤
+│  Tap a row to start                    │
+├────────────────────────────────────────┤
+│  │  Ask                                │
+│  │  Weather, room, anything            │  voice Q&A
+├────────────────────────────────────────┤
+│  │  Box Breathing                      │
+│  │  Focus + reset                      │  guided breathing
+├────────────────────────────────────────┤
+│  │  Meditation                         │
+│  │  Choose a session                   │  guided meditation
+└────────────────────────────────────────┘
+```
+
+- **Source badge** (header): `LIVE` / `CLOUD` / `CACHE` / `OFFLN` / `TX ERR` / `WX STL` — color-coded by severity
+- **Status line**: priority-ordered one-liner — `Offline` › `Sync failed` › `Air heavy. Ventilate.` › `Dry air.` › `Conditions unbalanced.` › `Room is fresh.` / `Calm. Focus ready.` / `Good for rest.` / `Room active.`
+- **Forecast strip** (bottom): 3-day min/max from OpenWeatherMap, refreshed every 30 min
 
 **Alerts (sent as events to backend)**
 

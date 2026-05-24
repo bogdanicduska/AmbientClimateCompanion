@@ -4,9 +4,13 @@ Props: state (live|cloud|cache|stale|offline), label
 """
 
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import os
 
 from services.contracts import SourceState
+
+_TZ_OFFSET_H = int(os.environ.get("TZ_OFFSET_HOURS", "0"))
+_LOCAL_TZ    = timezone(timedelta(hours=_TZ_OFFSET_H))
 
 _STATE_STYLE: dict[str, tuple[str, str]] = {
     "live":    ("#3DFF8A", "LIVE"),
@@ -49,7 +53,8 @@ def parse_freshness(row: dict | None, fetched_at: datetime) -> tuple[str, str, i
     if row and row.get("timestamp"):
         try:
             ts = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
-            ts_str     = ts.strftime("%a %d %b  ·  %H:%M")
+            ts_local   = ts.astimezone(_LOCAL_TZ)
+            ts_str     = ts_local.strftime("%a %d %b  ·  %H:%M")
             ts_age_min = int((fetched_at - ts).total_seconds() / 60)
         except Exception:
             ts_str = row.get("timestamp", "")[:16]
