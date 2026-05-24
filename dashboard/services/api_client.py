@@ -61,6 +61,16 @@ def fetch_daily_summary(device_id: str = DEFAULT_DEVICE_ID, date: str = "") -> d
         return None
 
 
+def fetch_forecast() -> dict:
+    try:
+        r = requests.get(f"{BACKEND_URL}/forecast", timeout=8)
+        if r.status_code == 200:
+            return r.json().get("data", {})
+        return {}
+    except Exception:
+        return {}
+
+
 def fetch_events(device_id: str = DEFAULT_DEVICE_ID, limit: int = 20) -> list[dict]:
     try:
         r = requests.get(

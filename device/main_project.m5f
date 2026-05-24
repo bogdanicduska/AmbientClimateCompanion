@@ -1094,9 +1094,28 @@ def update_air_tile():
 
 def update_status_line():
     text, color = get_status_message()
-    lcd.rect(0, 180, 320, 42, BG, BG)
+    lcd.rect(0, 179, 320, 24, BG, BG)
     lcd.font(lcd.FONT_DejaVu18)
-    lcd.print(text, 10, 186, color)
+    lcd.print(text, 10, 181, color)
+
+def update_forecast_strip():
+    lcd.rect(0, 204, 320, 35, BG, BG)
+    lcd.line(0, 204, 320, 204, 0x141E2A)
+    if not forecast:
+        return
+    lcd.font(lcd.FONT_Default)
+    col_w = 107
+    for i, day in enumerate(forecast[:3]):
+        x0 = i * col_w + 4
+        if i > 0:
+            lcd.line(i * col_w, 205, i * col_w, 238, 0x141E2A)
+        lo   = day.get("min")
+        hi   = day.get("max")
+        desc = (day.get("desc") or "")[:9]
+        temp_str = ("%d-%dC" % (int(lo), int(hi))) if lo is not None and hi is not None else "--"
+        lcd.print(day.get("day", "---"), x0, 207, 0x4A6A88)
+        lcd.print(temp_str,             x0, 220, 0xAABBCC)
+        lcd.print(desc,                 x0, 231, 0x3A5566)
 
 # -------------------------------------------------------
 # Page 2 — Coach / Wellbeing
@@ -1271,6 +1290,8 @@ def update_all():
     try: update_air_tile()
     except: pass
     try: update_status_line()
+    except: pass
+    try: update_forecast_strip()
     except: pass
 
 # -------------------------------------------------------
@@ -2572,7 +2593,9 @@ except: pass
 
 # 5. Weather — fetch and update hero outdoor info
 fetch_outdoor_weather()
+fetch_forecast()
 update_recovery_card()
+update_forecast_strip()
 save_last_state()
 
 # -------------------------------------------------------
@@ -2751,10 +2774,12 @@ while True:
     if (now - last_wx_time) >= WEATHER_EVERY:
         last_wx_time = now
         fetch_outdoor_weather()
+        fetch_forecast()
         if current_page == 1:
             update_recovery_card()
             update_header_page1()
             update_status_line()
+            update_forecast_strip()
         else:
             update_clock_dot()
             update_page2()

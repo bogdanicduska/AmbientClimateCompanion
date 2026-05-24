@@ -6,7 +6,7 @@ Answers: What is happening now? Why does it matter? What should I do next?
 import streamlit as st
 from datetime import datetime, timezone
 
-from services.api_client import fetch_latest, fetch_history
+from services.api_client import fetch_latest, fetch_history, fetch_forecast
 from services.transformers import to_latest_room_state, enrich_rows, history_to_df
 from services.explanations import score_trend
 from services.story_engine import to_daily_story, outdoor_suitability
@@ -146,6 +146,31 @@ def render() -> None:
         st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
         _sync_card(sync, ts_str, ts_age_min, fetched_at, indoor)
 
+    # ── 3-day weather forecast ────────────────────────────────────────────────
+    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+    section_label("Weather Forecast")
+    fc = fetch_forecast()
+    if fc:
+        f1, f2, f3 = st.columns(3)
+        with f1: _forecast_card("Today",     fc.get("today",     {}))
+        with f2: _forecast_card("Tomorrow",  fc.get("tomorrow",  {}))
+        with f3: _forecast_card("Day After", fc.get("day_after", {}))
+        if fc.get("storm_warning"):
+            st.markdown(
+                '<div style="margin-top:8px;padding:8px 14px;background:#1A0808;'
+                'border-left:3px solid #FF4422;border-radius:0 8px 8px 0;">'
+                '<span style="font-size:0.82rem;color:#FF6644;font-weight:600;">'
+                'Storm warning in the 3-day forecast — check conditions before going out.</span>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            '<div style="background:#0A1220;border:1px solid #1A2A3A;border-radius:12px;'
+            'padding:14px;color:#334455;font-size:0.85rem;">Forecast unavailable.</div>',
+            unsafe_allow_html=True,
+        )
+
     # ── Daily story teaser ────────────────────────────────────────────────────
     if df is not None and not df.empty:
         st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
@@ -226,6 +251,43 @@ def _sync_card(sync: dict, ts_str: str, ts_age_min, fetched_at: datetime, indoor
     sensor_row("WiFi RSSI",    indoor.get("wifi_rssi"),                              "dBm", "#445566",
                hint=_rssi_hint(indoor.get("wifi_rssi")))
     snapshot_card_close()
+
+
+def _forecast_card(label: str, day: dict) -> None:
+    if not day:
+        st.markdown(
+            f'<div style="background:#070C18;border:1px solid #0F1E2E;border-radius:12px;'
+            f'padding:16px;min-height:100px;display:flex;align-items:center;justify-content:center;">'
+            f'<span style="color:#223344;font-size:0.8rem;">—</span></div>',
+            unsafe_allow_html=True,
+        )
+        return
+    temp_min  = day.get("temp_min")
+    temp_max  = day.get("temp_max")
+    desc      = (day.get("description") or "—").title()
+    rain_prob = day.get("rain_probability", 0)
+    storm     = day.get("storm_warning", False)
+    morning_r = day.get("morning_rain", False)
+    temp_str  = (f"{temp_min:.0f}–{temp_max:.0f} °C"
+                 if temp_min is not None and temp_max is not None else "—")
+    if storm:
+        flag_html = '<span style="color:#FF4422;font-size:0.72rem;font-weight:700;">Storm warning</span>'
+    elif morning_r:
+        flag_html = '<span style="color:#4488FF;font-size:0.72rem;">Morning rain</span>'
+    elif rain_prob > 0.4:
+        flag_html = f'<span style="color:#4488FF;font-size:0.72rem;">{int(rain_prob * 100)}% rain</span>'
+    else:
+        flag_html = '<span style="color:#1A3A2A;font-size:0.72rem;">Clear</span>'
+    st.markdown(
+        f'<div style="background:#070C18;border:1px solid #0F1E2E;border-radius:12px;padding:16px;">'
+        f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.15em;text-transform:uppercase;'
+        f'margin-bottom:10px;">{label}</div>'
+        f'<div style="font-size:1.2rem;font-weight:700;color:#AACCEE;margin-bottom:4px;">{temp_str}</div>'
+        f'<div style="font-size:0.82rem;color:#667788;margin-bottom:8px;">{desc}</div>'
+        f'<div>{flag_html}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _sync_c(s):
