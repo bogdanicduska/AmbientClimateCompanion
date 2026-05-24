@@ -655,9 +655,10 @@ def fetch_forecast():
     try:
         import urequests, ujson
         r = urequests.get("https://api.openweathermap.org/data/2.5/forecast?q=" +
-                          OWM_CITY + "&appid=" + OWM_API_KEY + "&units=metric&cnt=40")
+                          OWM_CITY + "&appid=" + OWM_API_KEY + "&units=metric&cnt=24")
         raw = r.text; r.close()
         d = ujson.loads(raw)
+        del raw; gc.collect()
         today_t   = utime.localtime()
         today_str = "{:04d}-{:02d}-{:02d}".format(today_t[0], today_t[1], today_t[2])
         days = {}
@@ -671,6 +672,7 @@ def fetch_forecast():
             else:
                 if temp < days[date]["min"]: days[date]["min"] = temp
                 if temp > days[date]["max"]: days[date]["max"] = temp
+        del d; gc.collect()
         forecast = []
         for date in sorted(days.keys())[:3]:
             dd = days[date]
@@ -2594,6 +2596,7 @@ except: pass
 # 5. Weather — fetch and update hero outdoor info
 fetch_outdoor_weather()
 fetch_forecast()
+gc.collect()
 update_recovery_card()
 update_forecast_strip()
 save_last_state()
