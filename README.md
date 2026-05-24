@@ -148,6 +148,14 @@ The room's current human-readable identity — a short label that summarises how
 |------------|-------------------|
 | ![Coach menu](docs/coach_menu.jpeg) | ![Meditation picker](docs/meditation_menu.jpeg) |
 
+**3D-printed enclosure**
+
+A printed bezel clips the ENV III, PIR motion, and TVOC units around the Core2's edges and mounts it on an angled desk stand, keeping the screen at eye level with the sensors exposed to the room.
+
+| Front — sensors clipped to the bezel | On the printed stand | Rear — power, USB-C, Grove wiring |
+|--------------------------------------|----------------------|-----------------------------------|
+| ![Case front](docs/front.jpeg) | ![Case on stand](docs/side2.jpeg) | ![Case rear](docs/side1.jpeg) |
+
 ### Backend — Flask REST API (`backend/`)
 Python 3.11 / Flask application containerised with Docker, designed to run on Google Cloud Run.
 
