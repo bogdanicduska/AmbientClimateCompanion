@@ -127,9 +127,9 @@ The room's current human-readable identity — a short label that summarises how
 
 | Sensor | Unit | Port |
 |--------|------|------|
-| ENV III (temp / humidity / pressure) | `unit.ENV3` | PORTC |
+| ENV III (temp / humidity / pressure) | `unit.ENV3` | PORTA |
 | PIR motion sensor | `unit.PIR` | PORTB |
-| TVOC / eCO2 sensor | `unit.TVOC` | PORTA |
+| TVOC / eCO2 sensor | `unit.TVOC` | PORTC |
 
 **Buttons**
 
