@@ -314,6 +314,29 @@ gcloud run deploy ambient-dashboard `
 
 ---
 
+## Testing
+
+The project was validated at multiple levels:
+
+- **Unit tests** for telemetry validation and room-metric formulas
+- **API checks** for `/health`, `/latest`, `/history`, `/events`, and `/telemetry`
+- **Script-based integration tests** for backend routes and payload handling
+- **Manual end-to-end validation** with the physical M5Stack device, cloud backend, BigQuery storage, and deployed Streamlit dashboard
+
+Run backend tests with:
+
+```bash
+pytest backend/tests/
+```
+
+Additional route and integration checks are available in:
+
+```bash
+backend/scripts/
+```
+
+---
+
 ## BigQuery setup
 
 The backend streams all sensor + weather records to BigQuery. Two tables are required:
