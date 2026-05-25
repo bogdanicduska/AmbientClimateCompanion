@@ -49,12 +49,7 @@ setScreenColor(0x0D0D0D)
 # -------------------------------------------------------
 # Config
 # -------------------------------------------------------
-WIFI_NETWORKS = [
-    ("LopezLed", "Chuma12345"),
-    ("Pixel-AP",  "apmc1234"),
-    ("iot-unil",  "4u6uch4hpY9pJ2f9"),
-    ("Proximus-Home-704302", "123Bubamara1707987"),
-]
+WIFI_NETWORKS = []  # loaded from /flash/secrets.json below
 
 LAST_WIFI_FILE    = "/flash/last_wifi.txt"
 LAST_STATE_FILE   = "/flash/last_state.json"
@@ -67,12 +62,13 @@ try:
     import ujson as _uj
     with open("/flash/secrets.json") as _sf:
         _secrets = _uj.load(_sf)
-    AUTH_TOKEN  = _secrets.get("auth_token",  "changeme")
-    OWM_API_KEY = _secrets.get("owm_api_key", "")
+    AUTH_TOKEN    = _secrets.get("auth_token",  "changeme")
+    OWM_API_KEY   = _secrets.get("owm_api_key", "")
+    WIFI_NETWORKS = [tuple(n) for n in _secrets.get("wifi_networks", [])]
     del _secrets, _sf, _uj
 except:
-    AUTH_TOKEN  = "changeme"
-    OWM_API_KEY = ""
+    AUTH_TOKEN    = "changeme"
+    OWM_API_KEY   = ""
 OWM_CITY          = "Lausanne"
 
 SEND_EVERY         = 300
