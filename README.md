@@ -164,6 +164,25 @@ Page 3 — Coach menu (Button C):
 - TVOC ≥ 150 ppb → `air_quality_alert` event (edge-triggered)
 - Motion detected → `motion_triggered` event (8 s cooldown before re-trigger)
 
+**First-time device setup**
+
+Secrets are never stored in the firmware. Before first boot, write `/flash/secrets.json` to the device using this one-liner in UIFlow's Python editor:
+
+```python
+f = open("/flash/secrets.json", "w")
+f.write('{"auth_token":"YOUR_TOKEN","owm_api_key":"YOUR_OWM_KEY","wifi_networks":[["SSID1","pass1"],["SSID2","pass2"]]}')
+f.close()
+print("done")
+```
+
+Replace the values, run once, then reload `main_project.m5f`. A template is in `device/secrets.example.json`.
+
+| Key | Where to get it |
+|-----|----------------|
+| `auth_token` | Any string — must match `DEVICE_AUTH_TOKEN` in Cloud Run backend env vars |
+| `owm_api_key` | [openweathermap.org](https://openweathermap.org) → API keys |
+| `wifi_networks` | Your local network SSIDs and passwords |
+
 **Hardware wiring (M5Stack Core2)**
 
 | Sensor | Unit | Port |
