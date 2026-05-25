@@ -4,7 +4,7 @@
 
 | Member | Contribution |
 |--------|-------------|
-| **Duska** | Backend (Flask API, all services, Cloud Run deployment), Streamlit dashboard, device dashboard page (Page 1) and coach page (Page 2), continuous data collection pipeline, co-designed 3D printed enclosure and stand |
+| **Duska** | Backend (Flask API, all services, Cloud Run deployment), Streamlit dashboard, device dashboard page (Page 1) and coach page (Page 2), continuous data collection pipeline, end-to-end testing, co-designed 3D printed enclosure and stand |
 | **Ana** | BigQuery schema — cloud data foundation (`ambient_climate` dataset, `cloud-lab-weather`), on-device voice pipeline (STT + TTS), LLM meditation agent (gpt-4o-mini generated sessions), voice intent classification, co-designed 3D printed enclosure and stand |
 
 ---
