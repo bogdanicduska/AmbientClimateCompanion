@@ -36,6 +36,7 @@ ENV/
 .env.*
 !.env.example
 !.env.sample
+device/secrets.json
 *-service-account.json
 service-account.json
 service_account.json

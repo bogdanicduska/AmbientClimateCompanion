@@ -63,8 +63,16 @@ BACKEND_TELEMETRY = BACKEND_BASE_URL + "/telemetry"
 BACKEND_EVENTS    = BACKEND_BASE_URL + "/events"
 
 DEVICE_ID = "m5stack-duska-home"
-AUTH_TOKEN        = "weather2026"
-OWM_API_KEY       = "34d4c454b3bb2972a6a13382263a218e"
+try:
+    import ujson as _uj
+    with open("/flash/secrets.json") as _sf:
+        _secrets = _uj.load(_sf)
+    AUTH_TOKEN  = _secrets.get("auth_token",  "changeme")
+    OWM_API_KEY = _secrets.get("owm_api_key", "")
+    del _secrets, _sf, _uj
+except:
+    AUTH_TOKEN  = "changeme"
+    OWM_API_KEY = ""
 OWM_CITY          = "Lausanne"
 
 SEND_EVERY         = 300
