@@ -1,5 +1,14 @@
 # AmbientClimateCompanion — Room Rhythm
 
+## Team
+
+| Member | Contribution |
+|--------|-------------|
+| **Duska** | Backend (Flask API, all services, Cloud Run deployment), Streamlit dashboard, device dashboard page (Page 1) and coach page (Page 2), continuous data collection pipeline, end-to-end testing, co-designed 3D printed enclosure and stand |
+| **Ana** | BigQuery schema — cloud data foundation (`ambient_climate` dataset, `cloud-lab-weather`), on-device voice pipeline (STT + TTS), LLM meditation agent (gpt-4o-mini generated sessions), voice intent classification, co-designed 3D printed enclosure and stand |
+
+---
+
 A room-performance system that continuously senses how supportive a space is for focus, calm, comfort, and recovery.
 
 We treat the room like a living environment with performance states. Rather than displaying raw sensor values, the system derives four human-readable metrics that describe how the room *feels* right now.
@@ -7,6 +16,20 @@ We treat the room like a living environment with performance states. Rather than
 > These metrics do not claim to measure human biology directly. They are environmental interpretation metrics based on indoor climate, air quality, occupancy, and weather context, designed to describe how supportive the space may feel for comfort, focus, calm, and recovery.
 
 **Demo video:** [https://www.youtube.com/watch?v=PhG7hjahDLQ](https://www.youtube.com/watch?v=PhG7hjahDLQ)
+
+---
+
+## Repository structure
+
+| Folder | Contents |
+|--------|----------|
+| `device/` | M5Stack firmware (`main_project.m5f`) and `secrets.example.json` template |
+| `backend/` | Flask REST API — telemetry ingest, BigQuery, weather, voice AI services |
+| `dashboard/` | Streamlit web dashboard — pages, components, services |
+| `sql/` | BigQuery table schemas (`CREATE TABLE` statements) |
+| `docs/` | Device screenshots and setup notes |
+| `backend/tests/` | Unit and integration tests |
+| `backend/scripts/` | Manual testing and data validation scripts |
 
 ---
 
@@ -163,6 +186,25 @@ Page 3 — Coach menu (Button C):
 - Humidity drops below 40 % → `humidity_alert` event (edge-triggered, resets when condition clears)
 - TVOC ≥ 150 ppb → `air_quality_alert` event (edge-triggered)
 - Motion detected → `motion_triggered` event (8 s cooldown before re-trigger)
+
+**First-time device setup**
+
+Secrets are never stored in the firmware. Before first boot, write `/flash/secrets.json` to the device using this one-liner in UIFlow's Python editor:
+
+```python
+f = open("/flash/secrets.json", "w")
+f.write('{"auth_token":"YOUR_TOKEN","owm_api_key":"YOUR_OWM_KEY","wifi_networks":[["SSID1","pass1"],["SSID2","pass2"]]}')
+f.close()
+print("done")
+```
+
+Replace the values, run once, then reload `main_project.m5f`. A template is in `device/secrets.example.json`.
+
+| Key | Where to get it |
+|-----|----------------|
+| `auth_token` | Any string — must match `DEVICE_AUTH_TOKEN` in Cloud Run backend env vars |
+| `owm_api_key` | [openweathermap.org](https://openweathermap.org) → API keys |
+| `wifi_networks` | Your local network SSIDs and passwords |
 
 **Hardware wiring (M5Stack Core2)**
 
@@ -460,13 +502,13 @@ The device skips both motion polls and idle polls between **23:00–07:00 local*
 **Peek at what would fire right now (no audio, no cooldown burned):**
 ```powershell
 curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&dry_run=1" `
-  -H "Authorization: Bearer weather2026"
+  -H "Authorization: Bearer <your_auth_token>"
 ```
 
 **Force a specific trigger to your laptop (audio is returned to curl, not the device):**
 ```powershell
 curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&force=morning_briefing&raw=1" `
-  -H "Authorization: Bearer weather2026" -o forced.wav
+  -H "Authorization: Bearer <your_auth_token>" -o forced.wav
 ```
 
 **End-to-end on the device:** wave at the PIR. Within ~1 s the announcer polls. If the next-eligible trigger is out of cooldown and its condition is true, you hear it. Otherwise the response is `204` and the device stays quiet — by design.
@@ -588,7 +630,7 @@ When the agent answers a `weather_yesterday` question (or any historical one), t
 BACKEND="https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1"
 
 curl -s -X POST "$BACKEND/speech/ask" \
-  -H "Authorization: Bearer weather2026" \
+  -H "Authorization: Bearer <your_auth_token>" \
   -H "Content-Type: application/json" \
   -d '{"device_id":"m5stack-ana-home","question":"what was the weather yesterday"}' \
   | jq '.data | {intent, answer, outdoor_yesterday: .data_snapshot.outdoor_yesterday}'
@@ -598,7 +640,7 @@ PowerShell variant:
 
 ```powershell
 curl.exe -s -X POST "$env:BACKEND/api/v1/speech/ask" `
-  -H "Authorization: Bearer weather2026" `
+  -H "Authorization: Bearer <your_auth_token>" `
   -H "Content-Type: application/json" `
   -d '{\"device_id\":\"m5stack-ana-home\",\"question\":\"what was the weather yesterday\"}' |
   ConvertFrom-Json | Select-Object -ExpandProperty data |
