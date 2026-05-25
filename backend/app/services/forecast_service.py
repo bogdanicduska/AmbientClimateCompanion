@@ -1,3 +1,4 @@
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -9,6 +10,15 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
+
+# The forecast changes slowly, but the proactive poll calls this on every
+# request (every 5 min per device, plus on motion). Without a cache that's
+# hundreds of OpenWeatherMap calls/day. Cache per city for 5 min — mirrors
+# the cache in weather_service.py.
+CACHE_TTL_SECONDS = 300  # 5 minutes
+
+_cache: Dict[str, Any] = {}     # keyed by city name
+_cache_ts: Dict[str, float] = {}
 
 
 def _summarise_day(slots: List[Dict]) -> Dict[str, Any]:
@@ -42,11 +52,19 @@ def _summarise_day(slots: List[Dict]) -> Dict[str, Any]:
 
 
 def fetch_forecast(config) -> Dict[str, Any]:
+    city = config.get("OPENWEATHER_CITY", "")
+    now  = time.monotonic()
+
+    # Return cached forecast if still fresh
+    if city in _cache and (now - _cache_ts.get(city, 0)) < CACHE_TTL_SECONDS:
+        logger.debug(f"Forecast cache hit for {city}")
+        return _cache[city]
+
     try:
         response = requests.get(
             FORECAST_URL,
             params={
-                "q":     config["OPENWEATHER_CITY"],
+                "q":     city,
                 "appid": config["OPENWEATHER_API_KEY"],
                 "units": "metric",
                 "cnt":   24,
@@ -57,6 +75,10 @@ def fetch_forecast(config) -> Dict[str, Any]:
         items = response.json().get("list", [])
     except Exception as e:
         logger.error(f"Forecast fetch failed: {e}")
+        # Serve stale cache if we have one rather than an empty forecast
+        if city in _cache:
+            logger.warning(f"Returning stale cached forecast for {city}")
+            return _cache[city]
         return {"umbrella_needed": False, "storm_warning": False}
 
     days: Dict[str, list] = defaultdict(list)
@@ -72,8 +94,11 @@ def fetch_forecast(config) -> Dict[str, Any]:
     data["umbrella_needed"] = data.get("today", {}).get("morning_rain", False)
     data["storm_warning"]   = any(s.get("storm_warning") for s in summaries)
 
+    _cache[city]    = data
+    _cache_ts[city] = now
+
     logger.info(
         f"Forecast fetched — umbrella={data['umbrella_needed']}, "
-        f"storm={data['storm_warning']}"
+        f"storm={data['storm_warning']} (cached for {CACHE_TTL_SECONDS}s)"
     )
     return data
