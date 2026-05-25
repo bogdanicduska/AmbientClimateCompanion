@@ -318,7 +318,7 @@ The dashboard never queries BigQuery directly — all data comes through the bac
 ```powershell
 # 1. Set env vars (copy dashboard/.env.example → dashboard/.env and fill in values)
 $env:BACKEND_URL  = "http://localhost:5000/api/v1"   # or Cloud Run URL
-$env:DEVICE_ID    = "m5stack-duska-home"
+$env:DEVICE_ID    = "m5stack-ana-home"
 
 # 2. Install deps
 cd dashboard
@@ -333,7 +333,7 @@ streamlit run app.py
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BACKEND_URL` | `http://localhost:5000/api/v1` | Backend base URL |
-| `DEVICE_ID` | `m5stack-duska-home` | Default device shown on load |
+| `DEVICE_ID` | `m5stack-ana-home` | Default device shown on load |
 | `KNOWN_DEVICES` | _(unset)_ | Comma-separated list for the device selector dropdown |
 
 **Docker / Cloud Run deployment**
@@ -345,7 +345,7 @@ docker build -t ambient-dashboard ./dashboard
 # Run locally
 docker run -p 8080:8080 `
   -e BACKEND_URL=https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1 `
-  -e DEVICE_ID=m5stack-duska-home `
+  -e DEVICE_ID=m5stack-ana-home `
   ambient-dashboard
 
 # Push + deploy (Cloud Run)
@@ -501,13 +501,13 @@ The device skips both motion polls and idle polls between **23:00–07:00 local*
 
 **Peek at what would fire right now (no audio, no cooldown burned):**
 ```powershell
-curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&dry_run=1" `
+curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-ana-home&dry_run=1" `
   -H "Authorization: Bearer <your_auth_token>"
 ```
 
 **Force a specific trigger to your laptop (audio is returned to curl, not the device):**
 ```powershell
-curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-duska-home&force=morning_briefing&raw=1" `
+curl.exe "$env:BACKEND/api/v1/speech/proactive?device_id=m5stack-ana-home&force=morning_briefing&raw=1" `
   -H "Authorization: Bearer <your_auth_token>" -o forced.wav
 ```
 
