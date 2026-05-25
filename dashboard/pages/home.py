@@ -209,10 +209,23 @@ def _offline_card() -> None:
     )
 
 
+def _weather_icon(desc: str) -> str:
+    d = desc.lower()
+    if "thunder" in d or "storm" in d: return "⛈"
+    if "snow" in d or "sleet" in d:    return "❄️"
+    if "drizzle" in d:                 return "🌦"
+    if "rain" in d:                    return "🌧"
+    if "mist" in d or "fog" in d or "haze" in d: return "🌫"
+    if "overcast" in d or "cloud" in d: return "☁️"
+    if "clear" in d or "sun" in d:     return "☀️"
+    return "🌤"
+
+
 def _outdoor_card(outdoor: dict, suitability: str) -> None:
     o_temp   = outdoor.get("temperature_c")
     o_hum    = outdoor.get("humidity_pct")
     o_desc   = (outdoor.get("weather_main") or "—").title()
+    icon     = _weather_icon(o_desc)
     temp_str = f"{o_temp:.1f} °C" if o_temp is not None else "—"
     hum_str  = f"{o_hum:.0f} %" if o_hum is not None else "—"
     suit_color = (
@@ -226,7 +239,7 @@ def _outdoor_card(outdoor: dict, suitability: str) -> None:
         f'margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #0F1A28;">Outdoor Context</div>'
         f'<div style="display:flex;justify-content:space-between;padding:4px 0;">'
         f'<span style="color:#667788;font-size:0.8rem;">Conditions</span>'
-        f'<span style="color:#AAAACC;font-weight:600;">{o_desc}</span></div>'
+        f'<span style="color:#AAAACC;font-weight:600;">{icon} {o_desc}</span></div>'
         f'<div style="display:flex;justify-content:space-between;padding:4px 0;">'
         f'<span style="color:#667788;font-size:0.8rem;">Temperature</span>'
         f'<span style="color:#88CCFF;font-weight:600;">{temp_str}</span></div>'
@@ -265,6 +278,7 @@ def _forecast_card(label: str, day: dict) -> None:
     temp_min  = day.get("temp_min")
     temp_max  = day.get("temp_max")
     desc      = (day.get("description") or "—").title()
+    fc_icon   = _weather_icon(desc)
     rain_prob = day.get("rain_probability", 0)
     storm     = day.get("storm_warning", False)
     morning_r = day.get("morning_rain", False)
@@ -282,6 +296,7 @@ def _forecast_card(label: str, day: dict) -> None:
         f'<div style="background:#070C18;border:1px solid #0F1E2E;border-radius:12px;padding:16px;">'
         f'<div style="font-size:0.68rem;color:#3A5A7A;letter-spacing:0.15em;text-transform:uppercase;'
         f'margin-bottom:10px;">{label}</div>'
+        f'<div style="font-size:1.4rem;margin-bottom:4px;">{fc_icon}</div>'
         f'<div style="font-size:1.2rem;font-weight:700;color:#AACCEE;margin-bottom:4px;">{temp_str}</div>'
         f'<div style="font-size:0.82rem;color:#667788;margin-bottom:8px;">{desc}</div>'
         f'<div>{flag_html}</div>'
