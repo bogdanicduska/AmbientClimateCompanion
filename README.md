@@ -1,4 +1,4 @@
-# AmbientClimateCompanion — WHOOP for Room
+# AmbientClimateCompanion — Room Rhythm
 
 A room-performance system that continuously senses how supportive a space is for focus, calm, comfort, and recovery.
 
