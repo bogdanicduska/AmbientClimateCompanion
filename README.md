@@ -6,6 +6,8 @@ We treat the room like a living environment with performance states. Rather than
 
 > These metrics do not claim to measure human biology directly. They are environmental interpretation metrics based on indoor climate, air quality, occupancy, and weather context, designed to describe how supportive the space may feel for comfort, focus, calm, and recovery.
 
+**Demo video:** [https://www.youtube.com/watch?v=PhG7hjahDLQ](https://www.youtube.com/watch?v=PhG7hjahDLQ)
+
 ---
 
 ## Live deployment
