@@ -40,7 +40,7 @@ We treat the room like a living environment with performance states. Rather than
 | **Repository** | https://github.com/bogdanicduska/AmbientClimateCompanion |
 | **Dashboard** | https://ambient-dashboard-977755576323.europe-west6.run.app |
 | **Backend API** | https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1 |
-| **Health check** | https://ambient-climate-backend-977755576323.europe-west6.run.app/api/v1/health |
+| **Health check** | https://ambient-climate-backend-977755576323.europe-west6.run.app/health |
 
 ---
 
