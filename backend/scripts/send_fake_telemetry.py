@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-BASE_URL = "http://127.0.0.1:8080"
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080")
 API_KEY = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 
 payload = {

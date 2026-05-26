@@ -19,7 +19,7 @@ from app.services.proactive_service import PROACTIVE_TRIGGERS
 
 load_dotenv()
 
-BASE      = "http://127.0.0.1:8080/api/v1"
+BASE      = os.getenv("BACKEND_URL", "http://127.0.0.1:8080") + "/api/v1"
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "m5stack-ana-home")
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "_out")

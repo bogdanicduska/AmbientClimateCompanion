@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-BASE_URL = "http://127.0.0.1:8080"
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080")
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "core2-livingroom")
 
 EXPECTED_FIELDS = {

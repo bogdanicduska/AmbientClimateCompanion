@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-BASE_URL = "http://127.0.0.1:8080/api/v1/events"
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080") + "/api/v1/events"
 VALID_TOKEN = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "core2-livingroom")
 

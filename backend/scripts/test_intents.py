@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL  = os.getenv("ASK_URL", "http://127.0.0.1:8080/api/v1/speech/ask")
+BASE_URL  = os.getenv("BACKEND_URL", "http://127.0.0.1:8080") + "/api/v1/speech/ask"
 TOKEN     = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "m5stack-ana-home")
 HEADERS   = {"Authorization": f"Bearer {TOKEN}"}

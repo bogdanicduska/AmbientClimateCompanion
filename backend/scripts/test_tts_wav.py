@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE      = "http://127.0.0.1:8080/api/v1"
+BASE      = os.getenv("BACKEND_URL", "http://127.0.0.1:8080") + "/api/v1"
 TOKEN     = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "m5stack-ana-home")
 
