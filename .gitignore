@@ -63,6 +63,11 @@ Thumbs.db
 backend/tests/downloaded-logs-*.json
 backend/forced.wav
 *.wav
+*.mp3
+*.pcm
+backend/scripts/_out/
+device/speech_debug.py
+device/test_events.m5f
 
 # -------------------------------------------------------------------
 # Streamlit local config (may contain secrets)
