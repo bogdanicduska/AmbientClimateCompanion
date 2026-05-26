@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080")
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080/api/v1")
 DEVICE_ID = os.getenv("TEST_DEVICE_ID", "core2-livingroom")
 
 EXPECTED_FIELDS = {
@@ -22,7 +22,7 @@ def run_test(name, device_id):
     print(f"TEST: {name}")
     print(f"{'='*60}")
 
-    url = f"{BASE_URL}/api/v1/latest"
+    url = f"{BASE_URL}/latest"
     params = {"device_id": device_id} if device_id is not None else {}
 
     response = requests.get(url, params=params)

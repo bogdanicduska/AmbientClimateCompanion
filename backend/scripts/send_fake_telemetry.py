@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080")
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8080/api/v1")
 API_KEY = os.getenv("DEVICE_AUTH_TOKEN", "changeme")
 
 payload = {
@@ -24,7 +24,7 @@ for k, v in payload.items():
     print(f"  {k}: {v}")
 
 response = requests.post(
-    f"{BASE_URL}/api/v1/telemetry",
+    f"{BASE_URL}/telemetry",
     json=payload,
     headers={"Authorization": f"Bearer {API_KEY}"},
 )
